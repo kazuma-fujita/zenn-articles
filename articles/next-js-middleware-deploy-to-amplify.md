@@ -53,7 +53,7 @@ https://zenn.dev/zuma_lab/articles/74a999aa1a8c59
 
 前回この要件を満たすために Middleware で Cognito の認証状態を判定して URL ルーティングを実装しました。
 
-以下 Middleware の実装となります。(実装の詳細は [前回記事の Middleware を実装する](https://zenn.dev/zuma_lab/articles/74a999aa1a8c59#middleware-%E3%81%AE%E5%87%A6%E7%90%86%E3%81%AE%E6%B5%81%E3%82%8C) を参照ください)
+以下 Middleware の実装となります。(実装の詳細は [前回記事の Middleware を実装する](https://zenn.dev/zuma_lab/articles/74a999aa1a8c59#middleware-%E3%82%92%E5%AE%9F%E8%A3%85%E3%81%99%E3%82%8B) を参照ください)
 
 https://github.com/kazuma-fujita/nextjs-cognito-middleware-sample/blob/main/middleware.ts
 
