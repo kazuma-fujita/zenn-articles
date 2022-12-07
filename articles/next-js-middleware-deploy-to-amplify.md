@@ -1,6 +1,6 @@
 ---
 title: "Next.jsのMiddlewareをAmplify Hostingで動かす"
-emoji: "🎉"
+emoji: "🧞‍♂️"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
   - "amplify"
