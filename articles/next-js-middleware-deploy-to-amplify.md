@@ -38,6 +38,12 @@ Next.js の v12.2 から Middleware が stable になっています。
 
 https://zenn.dev/zuma_lab/articles/74a999aa1a8c59
 
+今回は前回の記事でローカル実装した認証 Middleware を Amplify で動かしてみます。
+
+# 認証 Middleware 実装
+
+簡単に前回の記事で実装した Next.js の認証 Middleware の仕様とコードです。
+
 認証が必須の MPA の WEB アプリケーションを実装する際に以下の URL ルーティング要件があったとします。
 
 - ルート URL にアクセスがあった場合、認証前であればログイン画面、認証後であればダッシュボード画面にリダイレクトする
@@ -45,15 +51,13 @@ https://zenn.dev/zuma_lab/articles/74a999aa1a8c59
 - 認証後にログイン画面の URL を直接叩かれた場合にダッシュボード画面にリダイレクトする
 - 利用規約やプライバシーポリシー画面は認証状態に関係無く表示する
 
-前回の記事ではこの要件を満たすために Middleware で Cognito の認証状態を判定して URL ルーティングを実装しました。
+前回この要件を満たすために Middleware で Cognito の認証状態を判定して URL ルーティングを実装しました。
 
-Middleware はプロジェクトルートに `middleware.ts` ファイルを作成するだけで Vercel や Amplify にデプロイ後エッジ環境で動作します。
-
-以下 Middleware の実装となります。(Cognito の認証判定の実装は前回記事を参照ください)
+以下 Middleware の実装となります。(実装の詳細は [前回記事の Middleware を実装する](https://zenn.dev/zuma_lab/articles/74a999aa1a8c59#middleware-%E3%81%AE%E5%87%A6%E7%90%86%E3%81%AE%E6%B5%81%E3%82%8C) を参照ください)
 
 https://github.com/kazuma-fujita/nextjs-cognito-middleware-sample/blob/main/middleware.ts
 
-今回はローカルで実装した認証 Middleware を Amplify で動かしてみます。
+ちなみに Middleware はプロジェクトルートに `middleware.ts` ファイルを作成するだけで Vercel や Amplify にデプロイ後エッジ環境で動作します。
 
 # 実行環境
 
@@ -97,17 +101,17 @@ AWS コンソール画面が立ち上がるので、`Frontend environments` タ�
 
 Github リポジトリと連携する為、Github を選択し `ブランチを接続` ボタンを押下します。
 
-![](https://storage.googleapis.com/zenn-user-upload/d00977f5194c-20221206.png)
+![](https://storage.googleapis.com/zenn-user-upload/d00977f5194c-20221206.png =600x)
 
 Github の Authorize AWS Amplify 画面になるので、`Authorize aws-amplify-console` ボタンを押下します。
 
-![](https://storage.googleapis.com/zenn-user-upload/90f54fb69f32-20221206.png)
+![](https://storage.googleapis.com/zenn-user-upload/90f54fb69f32-20221206.png =300x)
 
 Amplify コンソールに戻り「GitHub 認証が成功しました。」と表示されていることを確認します。
 
 次に Amplify と連携するリポジトリとブランチを選択して `次へ` ボタンを押下します。
 
-![](https://storage.googleapis.com/zenn-user-upload/290e9053b4a1-20221206.png)
+![](https://storage.googleapis.com/zenn-user-upload/290e9053b4a1-20221206.png =400x)
 
 ビルドの設定の App name はデフォルトのままで OK で、 Environment は `dev` を選択します。
 
@@ -115,7 +119,7 @@ Amplify コンソールに戻り「GitHub 認証が成功しました。」と�
 
 `次へ` ボタンを押下します。
 
-![](https://storage.googleapis.com/zenn-user-upload/00504462f433-20221206.png)
+![](https://storage.googleapis.com/zenn-user-upload/00504462f433-20221206.png =400x)
 
 次の画面で設定を確認したら `保存してデプロイ` ボタンを押下します。
 
@@ -183,7 +187,7 @@ frontend:
 
 Middleware や SSR などサーバーサイド処理も Lambda のように console.log で CloudWatch にログが出力されるかと思ったのですが。。
 
-(どなたか Amplify のサーバーサイド処理のログの出し方分かればご教授ください 🙇)
+(どなたか Amplify のエッジ環境のログの出し方分かればご教授ください 🙇)
 
 調べた結果 Amplify ｘ Next.js の場合、ルートディレクトリにある `next.config.js` の module.exports に env 設定をすると Amplify のサーバーサイド処理で環境変数が使用できるようです。
 
