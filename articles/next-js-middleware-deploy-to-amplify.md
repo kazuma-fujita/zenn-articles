@@ -40,6 +40,17 @@ https://zenn.dev/zuma_lab/articles/74a999aa1a8c59
 
 今回は前回の記事でローカル実装した認証 Middleware を Amplify で動かしてみます。
 
+# 実行環境
+
+- Node
+  - 16.13.0
+- npm
+  - 8.1.0
+- Next.js
+  - 13.0.5
+- Amplify CLI
+  - 10.5.1
+
 # 認証 Middleware 実装
 
 簡単に前回の記事で実装した Next.js の認証 Middleware の仕様とコードです。
@@ -58,17 +69,6 @@ https://zenn.dev/zuma_lab/articles/74a999aa1a8c59
 https://github.com/kazuma-fujita/nextjs-cognito-middleware-sample/blob/main/middleware.ts
 
 ちなみに Middleware はプロジェクトルートに `middleware.ts` ファイルを作成するだけで Vercel や Amplify にデプロイ後エッジ環境で動作します。
-
-# 実行環境
-
-- Node
-  - 16.13.0
-- npm
-  - 8.1.0
-- Next.js
-  - 13.0.5
-- Amplify CLI
-  - 10.5.1
 
 # Amplify Hosting カテゴリを追加してデプロイする
 
