@@ -18,7 +18,7 @@ Amplify Predictions カテゴリの Amazon Translate と Next.js を使ってマ
 
 最終的な成果物はこのようになります。
 
-![](https://storage.googleapis.com/zenn-user-upload/dffa0456ba54-20221210.gif)
+![](https://storage.googleapis.com/zenn-user-upload/5abcf79ed7bb-20221210.gif)
 
 Amazon Translate は 言語翻訳サービスで同様サービスとして DeepL API、Google Cloud Translation などがあります。
 
