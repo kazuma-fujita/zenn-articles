@@ -18,7 +18,7 @@ Amplify Predictions カテゴリの Amazon Translate と Next.js を使ってマ
 
 最終的な成果物はこのようになります。
 
-![](https://storage.googleapis.com/zenn-user-upload/f2f766ffd00b-20221210.gif)
+![](https://storage.googleapis.com/zenn-user-upload/dffa0456ba54-20221210.gif)
 
 Amazon Translate は 言語翻訳サービスで同様サービスとして DeepL API、Google Cloud Translation などがあります。
 
@@ -257,6 +257,8 @@ https://github.com/kazuma-fujita/nextjs-amplify-text-to-translate/blob/main/src/
 以下翻訳言語選択プルダウンの実装となります。
 
 Select タグの options に Amplify Translate に対応する全言語の言語ラベルと Language code を設定します。
+
+https://github.com/kazuma-fujita/nextjs-amplify-text-to-translate/blob/main/src/data/language-options.ts
 
 https://github.com/kazuma-fujita/nextjs-amplify-text-to-translate/blob/main/src/components/selecct-box.tsx
 
