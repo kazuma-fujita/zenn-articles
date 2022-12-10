@@ -54,7 +54,7 @@ npx create-next-app@latest --ts --use-npm --eslint nextjs-amplify-text-to-transl
 プロジェクトルートディレクトリへ移動します。
 
 ```
-cd nextjs-cognito-middleware-sample
+cd nextjs-amplify-text-to-translate
 ```
 
 以下 Amplify 関連パッケージをインストールします。
@@ -77,7 +77,7 @@ npm install aws-amplify @aws-amplify/predictions
 amplify add auth
 ```
 
-今回 Next.js の Middleware 検証の為、Cognito の設定は最低限メールアドレスとパスワードのみの認証とします。
+Cognito の設定は最低限メールアドレスとパスワードのみの認証とします。
 
 ```
 Using service: Cognito, provided by: awscloudformation
