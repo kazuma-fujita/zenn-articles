@@ -14,6 +14,8 @@ published: true
 この記事は [AWS Amplify と AWS× フロントエンド Advent Calendar 2022](https://qiita.com/advent-calendar/2022/amplify) 10 日目の記事です。
 :::
 
+こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
+
 Amplify Predictions カテゴリの Amazon Translate と Next.js を使ってマルチ言語翻訳サイトを作ってみます。
 
 最終的な成果物はこのようになります。
@@ -64,6 +66,10 @@ npm install aws-amplify @aws-amplify/predictions
 ```
 
 # Amplify を設定する
+
+Amplify Predictions カテゴリを使用する為には Amplify Auth カテゴリを追加する必要があります。
+
+まずは Auth カテゴリを追加します。
 
 ## Amplify Auth カテゴリを追加する
 

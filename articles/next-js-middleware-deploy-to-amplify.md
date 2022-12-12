@@ -14,6 +14,8 @@ published: true
 この記事は [AWS Amplify と AWS× フロントエンド Advent Calendar 2022](https://qiita.com/advent-calendar/2022/amplify) 7 日目の記事です。
 :::
 
+こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
+
 先日、Amplify Hosting が Next.js12 と 13 に対応して Next.js の Middleware が Amplify で使えるようになりました。
 
 https://aws.amazon.com/jp/blogs/mobile/amplify-next-js-13/
