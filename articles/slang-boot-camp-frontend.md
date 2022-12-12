@@ -17,26 +17,41 @@ published: true
 
 こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
 
-筆者は英語学習初学者です。字幕無しで洋画を観るのが目標ですが、いつもハリウッド俳優が何を言ってるのかサッパリわかりません。
+クソアプ初参加です。お手柔らかにお願いします。
 
-リスニング出来ない理由として以下分析しました。
+学校や TOEIC のテストでは絶対出てこないであろうスラングのリスニングと発音練習が出来る Slang Boot Camp という WEB アプリを作ってみました。
 
-- ハリウッド俳優達の会話が速すぎる
+このアプリで覚えたフレーズは英語のテストで一切役に立たない事を保証いたします。
+
+# 動機
+
+筆者の英語力は中二レベルです。
+
+いつか字幕無しで洋画を観るという目標がありますが、現状ハリウッド俳優が何を言ってるのかサッパリわかりません。
+
+筆者がリスニング出来ない理由として主に以下が挙げられます。
+
+- 英語力が中二で止まっている
+- ハリウッド俳優達の会話が速くて追いつけない
 - リンキング(単語間が繋がってる)してる
 - リダクション(本来発音されるべき音が発音されてない)してる
 - **スラングめっちゃ使ってる**
 
-という訳でスラングのリスニングと発音練習が出来る Slang Boot Camp というアプリを作ってみました。
+英語学習において他にやること山の如しですが、とりあえずスラング覚えたいなーと思ってこのアプリを作りました。
+
+# こんなんです
 
 以下成果物です。
 
-まず英語問題文が読み上げれます。次にリスニングした問題文をスピーキングします。発音が正しければ日本語訳の解答が表示され、次の問題文が読み上げれます。
+まず英語問題文が読み上げれます。次にユーザーはリスニングした問題文をスピーキングします。
+
+発音が正しければ日本語訳の解答が表示され次の問題が出題されます。
 
 発音が正しければすればスラングで祝ってくれますし、間違っていればスラングで罵られます。
 
-全 30 文あります。
+筆者が独断と偏見でレベル分けをした問題が全部で 30 問あります。
 
-正直実装とかより、この問題文考えるほうが大変でした。
+正直実装とかより、問題考えるほうが大変でした。
 
 # やってること
 
@@ -79,10 +94,18 @@ Amplify 関連パッケージをインストールします。
 npm install aws-amplify @aws-amplify/predictions
 ```
 
-React Audio Player をインストールします。
+音声を再生する為、React Audio Player をインストールします。
 
 ```
 npm install react-audio-player
+```
+
+音声を録音する為、React Media Recorder をインストールします。
+
+こちらは後述しますが、訳あってバージョンを固定しています。
+
+```
+npm install react-media-recorder@1.6.5
 ```
 
 # Amplify を設定する
@@ -281,6 +304,11 @@ amplify add predictions
       "providerPlugin": "awscloudformation",
       "service": "Polly",
       "convertType": "speechGenerator"
+    },
+    "transcription0e88a3c3": {
+      "providerPlugin": "awscloudformation",
+      "service": "Transcribe",
+      "convertType": "transcription"
     }
   }
 ```
@@ -292,3 +320,46 @@ amplify push -y
 ```
 
 # 画面を実装する
+
+## ReferenceError: Blob is not defined が発生する場合
+
+Next.js で React Media Recorder パッケージを使用すると `Blob is not defined` が発生する場合があります。
+
+以下の issues でエラーについて議論されていました。
+
+https://github.com/0x006F/react-media-recorder/issues/103
+
+Next.js はデフォルトでサーバサイドでレンダリングされるので MediaRecorder などクライアントサイドで動作するモジュールは動的 import をする必要があるようです。
+
+issues を参考に以下のように修正しました。
+
+```ts:index.tsx
+const Recorder = dynamic(
+  () =>
+    import("../src/components/audio-recorder").then(
+      (module) => module.AudioRecorder
+    ),
+  { ssr: false }
+);
+```
+
+ただ、この `Blob is not defined` エラーを解消すると次は以下のエラーが発生しました。
+
+```
+Error: There is already an encoder stored which handles exactly the same mime types.
+```
+
+以下の issues でエラーについて議論されていました。
+
+https://github.com/0x006F/react-media-recorder/issues/98#issuecomment-1133918236
+
+以下和訳引用
+
+> Next.js はデフォルト `next.config.js` の `reactStrictMode` が true になっています。
+> Strict モードではすべてのコンポーネントが 2 回呼び出されるため、Extendable-Media-Recorder でこのエラーがスローされます。
+
+Strict モードを OFF にするとエラーは発生しませんが、本番運用のプロジェクトの開発では極力 Strict モードで開発したいです。
+
+ワークアラウンドな対処法になってしまいますが、2022/12/12 時点で最新である React Media Recorder バージョン 1.6.6 を `npm i react-media-recorder@1.6.5` で バージョンを 1.6.5 に固定すると取り急ぎ全てのエラーが解消されます。
+
+今回はとりあえずバージョン固定しました。
