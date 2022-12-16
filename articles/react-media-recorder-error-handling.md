@@ -69,4 +69,4 @@ Strict モードを OFF にするとエラーは発生しませんが、プロ�
 npm i react-media-recorder@1.6.5
 ```
 
-以上手短ですが、React Media Recorder で発生するエラーの回避方法 Tips でした。
+以上手短ですが、Next.js x React Media Recorder で発生するエラーの回避方法 Tips でした。

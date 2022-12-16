@@ -94,47 +94,17 @@ Amplify 関連パッケージをインストールします。
 npm install aws-amplify @aws-amplify/predictions
 ```
 
-音声を再生する為、React Audio Player をインストールします。
-
-```
-npm install react-audio-player
-```
-
-# 音声録音に必要なパッケージについて
-
-Amplify Predictions カテゴリの Amazon Transcribe はリアルタイム音声文字起こしが出来る Amazon Transcribe Streaming を使用して stream 処理をしています。
-
-https://docs.aws.amazon.com/transcribe/latest/dg/streaming.html
-
-実際にブラウザから Amazon Transcribe へのリクエスト URL を見ると以下のように websocket 通信をしている事が分かります。
-
-`media-encoding=pcm` クエリが付いていることから、PCM データを送信する必要があります。
-
-```
-wss://transcribestreaming.ap-northeast-1.amazonaws.com:8443/stream-transcription-websocket?media-encoding=pcm&sample-rate=16000&language-code=en-US&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIATNKHGROELN3BCD6P%2F20221213%2Fap-northeast-1%2Ftranscribe%2Faws4_request&X-Amz-Date=20221213T....
-```
-
-通常、ブラウザから音声録音をする時は Web 標準 API の MediaRecorder、React Audio Recorder などのパッケージを使用するかと思います。
-
-これらのライブラリはブラウザ経由でマイクから音声録音、 WAV の音声ファイルを出力することができます。
-
-ですが、今回は Amazon Transcribe Streaming の stream 処理で WAV にする前の生 PCM データを Websocket でやり取りする必要があります。
-
-今回は音声のリアルタイムストリーム処理をする為、 microphone-stream パッケージをインストールします。
+音声を stream 処理する為、 `microphone-stream` パッケージをインストールします。
 
 ```
 npm install microphone-stream
 ```
 
-今回、一番のハマり所がこの stream 処理でした。。。
+音声を再生する為、React Audio Player をインストールします。
 
-以下公式のやり方があるのですが、素直に Javascript から Typescript に書き直しても動かなかったので結構ハマりました。
-
-需要が無いのか、公式も含め情報が全然出てきません。
-
-https://docs.amplify.aws/lib/predictions/sample/q/platform/js/
-
-最終的になんとか自力で動かすことが出来ました。
+```
+npm install react-audio-player
+```
 
 # Amplify を設定する
 
