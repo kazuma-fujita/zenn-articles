@@ -8,7 +8,7 @@ topics:
   - "amplify"
   - "aws"
   - "english"
-published: true
+published: false
 ---
 
 :::message
@@ -100,19 +100,45 @@ npm install aws-amplify @aws-amplify/predictions
 npm install react-audio-player
 ```
 
-音声を録音する為、React Media Recorder をインストールします。
+# 音声録音に必要なパッケージについて
 
-こちらは後述しますが、訳あってバージョンを固定しています。
+Amplify Predictions カテゴリの Amazon Transcribe はリアルタイム音声文字起こしが出来る Amazon Transcribe Streaming を使用して stream 処理をしています。
+
+https://docs.aws.amazon.com/transcribe/latest/dg/streaming.html
+
+実際にブラウザから Amazon Transcribe へのリクエスト URL を見ると以下のように websocket 通信をしている事が分かります。
+
+`media-encoding=pcm` クエリが付いていることから、PCM データを送信する必要があります。
 
 ```
-npm install react-media-recorder@1.6.5
+wss://transcribestreaming.ap-northeast-1.amazonaws.com:8443/stream-transcription-websocket?media-encoding=pcm&sample-rate=16000&language-code=en-US&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIATNKHGROELN3BCD6P%2F20221213%2Fap-northeast-1%2Ftranscribe%2Faws4_request&X-Amz-Date=20221213T....
 ```
+
+通常、ブラウザから音声録音をする時は Web 標準 API の MediaRecorder、React Audio Recorder などのパッケージを使用するかと思います。
+
+これらのライブラリはブラウザ経由でマイクから音声録音、 WAV の音声ファイルを出力することができます。
+
+ですが、今回は Amazon Transcribe Streaming の stream 処理で WAV にする前の生 PCM データを Websocket でやり取りする必要があります。
+
+今回は音声のリアルタイムストリーム処理をする為、 microphone-stream パッケージをインストールします。
+
+```
+npm install microphone-stream
+```
+
+今回、一番のハマり所がこの stream 処理でした。。。
+
+以下公式のやり方があるのですが、素直に Javascript から Typescript に書き直しても動かなかったので結構ハマりました。
+
+需要が無いのか、公式も含め情報が全然出てきません。
+
+https://docs.amplify.aws/lib/predictions/sample/q/platform/js/
+
+最終的になんとか自力で動かすことが出来ました。
 
 # Amplify を設定する
 
 Amplify Predictions カテゴリを使用する為には Amplify Auth カテゴリを追加する必要があります。
-
-まずは Auth カテゴリを追加します。
 
 ## Amplify Auth カテゴリを追加する
 
@@ -229,18 +255,6 @@ amplify add predictions
 ❯ Auth and Guest users
 ```
 
-カテゴリを追加すると、以下 `bacend-config.json` に項目が追加されます。
-
-```json:bacend-config.json
-  "predictions": {
-    "speechGeneratora239dcbe": {
-      "providerPlugin": "awscloudformation",
-      "service": "Polly",
-      "convertType": "speechGenerator"
-    }
-  }
-```
-
 ## Transcribe audio to text (Amazon Transcribe) を追加する
 
 次に、ユーザーの音声からテキストに変換する為、Amazon Transcribe を使えるようにします。
@@ -296,21 +310,28 @@ amplify add predictions
 ❯ Auth and Guest users
 ```
 
-カテゴリを追加すると、以下 `bacend-config.json` に項目が追加されます。
+カテゴリを追加すると、以下 `aws-exports.js` に項目が追加されます。
 
 ```json:bacend-config.json
-  "predictions": {
-    "speechGeneratora239dcbe": {
-      "providerPlugin": "awscloudformation",
-      "service": "Polly",
-      "convertType": "speechGenerator"
-    },
-    "transcription0e88a3c3": {
-      "providerPlugin": "awscloudformation",
-      "service": "Transcribe",
-      "convertType": "transcription"
+    "predictions": {
+        "convert": {
+            "speechGenerator": {
+                "region": "ap-northeast-1",
+                "proxy": false,
+                "defaults": {
+                    "VoiceId": "Kevin",
+                    "LanguageCode": "en-US"
+                }
+            },
+            "transcription": {
+                "region": "ap-northeast-1",
+                "proxy": false,
+                "defaults": {
+                    "language": "en-US"
+                }
+            }
+        }
     }
-  }
 ```
 
 以下のコマンドで作成した Amplify Auth と Predications カテゴリをクラウドにプロビジョニングします。
@@ -321,7 +342,25 @@ amplify push -y
 
 # 画面を実装する
 
-## ReferenceError: Blob is not defined が発生する場合
+# 音声録音パッケージの Tips
+
+実装当初、音声録音には React Media Recorder パッケージを導入していました。
+
+```
+npm i react-media-recorder
+```
+
+通常ならば React Media Recorder の `useReactMediaRecorder` hook を使って簡単に録音機能を実装できます。
+
+但し、Amplify Predictions カテゴリで使用する Amazon Transcribe はリアルタイム音声文字起こしで使用する Amazon Transcribe Streaming を使用していました。
+
+https://docs.aws.amazon.com/transcribe/latest/dg/streaming.html
+
+なので、静的な音声ファイルを扱う React Media Recorder では無く、microphone-stream を使用する必要がありました。
+
+以下は React Media Recorder を導入していた時にエラーでハマったので回避策を Tips として残しておきます。
+
+## React Media Recorder で `Blob is not defined` が発生する場合
 
 Next.js で React Media Recorder パッケージを使用すると `Blob is not defined` が発生する場合があります。
 
@@ -336,6 +375,7 @@ issues を参考に以下のように修正しました。
 ```ts:index.tsx
 const Recorder = dynamic(
   () =>
+	  // audio-recorderは内部でReact Media Recorderを呼び出しているComponent
     import("../src/components/audio-recorder").then(
       (module) => module.AudioRecorder
     ),
@@ -360,6 +400,8 @@ https://github.com/0x006F/react-media-recorder/issues/98#issuecomment-1133918236
 
 Strict モードを OFF にするとエラーは発生しませんが、本番運用のプロジェクトの開発では極力 Strict モードで開発したいです。
 
-ワークアラウンドな対処法になってしまいますが、2022/12/12 時点で最新である React Media Recorder バージョン 1.6.6 を `npm i react-media-recorder@1.6.5` で バージョンを 1.6.5 に固定すると取り急ぎ全てのエラーが解消されます。
+ワークアラウンドな対処法になってしまいますが、2022/12/12 時点で最新である React Media Recorder バージョン 1.6.6 を以下コマンドで バージョンを 1.6.5 にダウングレードすると取り急ぎ全てのエラーが解消されます。
 
-今回はとりあえずバージョン固定しました。
+```
+npm i react-media-recorder@1.6.5
+```
