@@ -12,14 +12,18 @@ published: true
 ---
 
 :::message
-この記事は [AWS Amplify と AWS× フロントエンド Advent Calendar 2022](https://qiita.com/advent-calendar/2022/amplify) N 日目の記事です。
+この記事は [AWS Amplify と AWS× フロントエンド Advent Calendar 2022](https://qiita.com/advent-calendar/2022/amplify) の 16 日目の記事です。
 :::
 
 こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
 
 Next.js と Amplify Predictions カテゴリの Amazon Transcribe を使って多言語に対応した音声文字起こしサイトを作ってみます。
 
-以下成果物になります。(音声が流れます)
+以下成果物になります。
+
+動作環境はローカルですが、ものすごい短い文章でも文字起こし結果レスポンスは日本語より英語の方が速かったです。
+
+https://www.youtube.com/watch?v=zIn1YAnB1mQ
 
 Amazon Transcribe は音声をテキストに自動的に変換するサービスです。
 
@@ -178,11 +182,10 @@ amplify add predictions
 ```
 ? What would you like to convert?
 
-以下成果物になります。(音声が流れます)
   Translate text into a different language
   Generate speech audio from text
 ❯ Transcribe text from audio
-在、
+```
 
 以下設問はデフォルトのままとします。
 
@@ -196,7 +199,7 @@ amplify add predictions
 
 2020 年 11 月に日本語対応されているはずなのですが、Japanese が選択肢に出てきません。
 
-ここは一旦、US English を選択します。
+後で動的に変更出来るように実装しますが、ここは一旦 US English を選択します。
 
 ```
 
@@ -217,7 +220,7 @@ US Spanish
 Auth users only
 ❯ Auth and Guest users
 
-````
+```
 
 カテゴリを追加すると、以下 `aws-exports.js` に項目が追加されます。
 
@@ -233,7 +236,7 @@ Auth users only
             }
         }
     }
-````
+```
 
 以下のコマンドで作成した Amplify Auth と Predications カテゴリをクラウドにプロビジョニングします。
 
@@ -305,7 +308,9 @@ https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/hoo
 
 以下文字起こしをする言語選択プルダウンの実装となります。
 
-Select タグの options に Amplify Translate に対応する全言語の言語ラベルと Language code を設定します。
+Select タグの options に Amplify Transcribe Streaming に対応する全言語の言語ラベルと Language code を設定します。
+
+言語選択プルダウンのデフォルト値は日本語の Language code に設定します。
 
 https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/data/language-options.ts
 
@@ -318,8 +323,6 @@ useSpeechToText hook を呼び出して録音の開始、終了、文字起こ�
 https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/components/speech-to-text.tsx
 
 以下プルダウンと音声録音コンポーネントの親コンポーネントです。
-
-言語選択プルダウンのデフォルト値は日本語の Language code に設定します。
 
 https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/components/speech-to-text-form.tsx
 
@@ -347,5 +350,5 @@ https://cloud.google.com/speech-to-text/pricing?hl=ja
 - Amazon Transcribe の対応言語は 37 言語。その中で Transcribe Streaming に対応している言語は 17 言語。
 - Transcribe Streaming は WAV にする前の生 PCM データを Websocket 通信でやり取りする
 - Transcribe Streaming に 音声 PCM データを投げるに当たって `microphone-stream` パッケージを使用して音声 stream を取得する必要がある
-- 文字起こし処理は `Predictions.convert` 関数の source に PCM データを指定して呼び出すだけで Amazon Transcribe が実行できる
+- 文字起こし処理は `Predictions.convert` 関数の source に PCM データを指定して呼び出すだけで Amazon Transcribe Streaming が実行できる
 - 料金は Batch 処理 と Streaming 処理に費用差はなく、従量課金制。0.024USD/分から使用時間によって 0.015USD、0.0102USD と割安になっていく
