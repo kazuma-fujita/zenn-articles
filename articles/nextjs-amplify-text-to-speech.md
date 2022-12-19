@@ -12,7 +12,7 @@ published: true
 ---
 
 :::message
-この記事は [AWS Amplify と AWS× フロントエンド Advent Calendar 2022](https://qiita.com/advent-calendar/2022/amplify) の N 日目の記事です。
+この記事は [AWS Amplify と AWS× フロントエンド Advent Calendar 2022](https://qiita.com/advent-calendar/2022/amplify) の 19 日目の記事です。
 :::
 
 こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
@@ -21,23 +21,43 @@ Next.js と Amplify Predictions カテゴリの Amazon Polly を使って多言�
 
 以下成果物になります。
 
-動作環境はローカルですが、ものすごい短い文章でも読み上げ結果レスポンスは日本語より英語の方が速かったです。
+https://youtu.be/MpUSaHkkl-A
 
-https://www.youtube.com/watch?v=zIn1YAnB1mQ
+# Amazon Polly の事前知識
 
-Amazon Transcribe は音声をテキストに自動的に変換するサービスです。
+Amazon Polly はテキストを音声に自動的に変換するサービスです。
 
-2022/12/15 現在、実に 37 言語に対応しています。
+2022/12/19 現在、Amazon Polly では [計 36 の言語と方言](https://docs.aws.amazon.com/polly/latest/dg/voicelist.html) に対応しています。
 
-https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
+Amazon Polly は言語に加え、Gender 別に様々な音声が用意されています。
 
-Amplify Predictions カテゴリの Amazon Transcribe はリアルタイム音声読み上げが出来る Amazon Transcribe Streaming を使用しています。
+English(US)に関しては子供の音声まで用意されていました。
 
-https://docs.aws.amazon.com/transcribe/latest/dg/streaming.html
+![](https://storage.googleapis.com/zenn-user-upload/02f8555e167f-20221219.png)
 
-調査した所、Amazon Transcribe Streaming に対応している言語は 17 言語でした。
+それぞれの音声の中でも、通常の Text To Speech(以下 TTS) システムを使った Standard Voice の他に [Neural Text To Speech(以下 NTTS) システムを使った Neural Voice](https://docs.aws.amazon.com/ja_jp/polly/latest/dg/NTTS-main.html) が用意されています。
 
-今回作るサイトは読み上げをする対象言語、全 17 言語の切り替えが出来るようにしてみたいと思います。
+> Amazon Polly にはニューラル TTS (NTTS) システムがあり、標準音声よりも高品質の音声を生成できます。NTTS システムは、最も自然で人間らしいものを生み出します。
+
+NTTS では、可能な限り自然で人間に似たテキスト読み上げ音声を生成しており、親しみやすく、スムーズに聞こえるそうです。
+
+日本語では TTS のみ対応した Mizuki と NTTS に対応した Takumi が用意されています。
+
+実際に TTS と NTTS を比較してみました。
+
+最初に Mizuki の音声、次に Takumi の音声が流れます。
+
+https://youtu.be/pNFhRtIyTT0
+
+確かに、Mizuki の方は良くある機械音声読み上げのような棒読み感があるのに対して、Takumi はナチュナルな発声やイントネーションが再現出来ている気がします。
+
+Amplify Predications は NTTS / TTS 両対応の音声をサポートしています。
+
+残念ながら NTTS のみ対応している音声はサポートしていません。
+
+それでも計 29 の言語と方言に対応した音声を選択する事が出来ます。
+
+今回作るサイトは Amplify Predications カテゴリの Amazon Polly に対応した全音声の切り替えが出来るようにしてみたいと思います。
 
 # 実行環境
 
@@ -147,7 +167,7 @@ amplify add predictions
 ? What would you like to convert?
   Translate text into a different language
 ❯ Generate speech audio from text
-  Transcribe text from audio
+  Polly text from audio
 ```
 
 以下設問はデフォルトのままとします。
@@ -172,11 +192,9 @@ amplify add predictions
 (Move up and down to reveal more choices)
 ```
 
-音声読み上げをするキャラ(?)を選択します。
+音声を選択します。こちらも後で変更できるように実装します。
 
-こちらも後で変更できるように実装できます。
-
-一旦 Kevin にしました。
+一旦 Kevin を選択しました。
 
 ```
 ? Select a speaker (Use arrow keys)
@@ -188,6 +206,11 @@ amplify add predictions
   Justin - Male
   Joey - Male
 ```
+
+:::message alert
+Kevin は前述した NTTS のみ対応した音声なので、Amplify Predictions カテゴリの Amazon Polly で使用するとエラーになります。
+Amplify CLI の選択肢にはたまに落とし穴があるので、使用する前に Amazon Polly の公式ドキュメントを読む事をオススメします。
+:::
 
 今回は未認証のゲストユーザーでもアクセス出来ように設定します。
 
@@ -222,9 +245,7 @@ amplify push -y
 
 # フロントエンドで Amplify Configure を設定する
 
-以下公式ドキュメントを参考に Amplify Configure 設定をします。
-
-https://docs.amplify.aws/lib/predictions/getting-started/q/platform/js/#configure-the-frontend
+[公式ドキュメント](https://docs.amplify.aws/lib/predictions/getting-started/q/platform/js/#configure-the-frontend) を参考に Amplify Configure 設定をします。
 
 ```ts:__app.tsx
 import { Amplify } from 'aws-amplify';
@@ -238,93 +259,79 @@ Amplify.configure(awsconfig);
 Amplify.addPluggable(new AmazonAIPredictionsProvider());
 ```
 
-## Amplify.addPluggable でエラーが発生した場合
-
+:::message alert
 Next.js の `__app.tsx` で `Amplify.addPluggable` を呼び出すと以下のエラーが発生する場合があります。
 
 ```
 Error: Pluggable with name AmazonAIPredictionsProvider has already been added.
 ```
 
-以下過去記事でエラー回避方法について記載していますので参照ください。
+もしエラーが発声したら [筆者の過去記事](https://zenn.dev/zuma_lab/articles/nextjs-amplify-text-to-translate#amplify.addpluggable-%E3%81%A7%E3%82%A8%E3%83%A9%E3%83%BC%E3%81%8C%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%A0%B4%E5%90%88) でエラー回避方法について記載していますので参照ください。
+:::
 
-https://zenn.dev/zuma_lab/articles/nextjs-amplify-text-to-translate#amplify.addpluggable-%E3%81%A7%E3%82%A8%E3%83%A9%E3%83%BC%E3%81%8C%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%A0%B4%E5%90%88
-
-# テキスト読み上げカスタムフックを実装する
+# 音声読み上げカスタムフックを実装する
 
 以下 が今回の肝である Amplify Predictions を使用した読み上げカスタムフックの実装となります。
 
-翻訳を実行する `convertSpeechToText` 関数と翻訳結果の値 `transcribeText` を返却します。
+useConvertTextToSpeech hook では翻訳を実行する `convertTextToSpeech` 関数と音声変換結果の Blob URL Scheme である `speechBlobUrl` を返却します。
 
-`Predictions.convert` を呼び出すだけで Amazon Transcribe を使用した翻訳が実行できます。
+`Predictions.convert` を呼び出すだけで Amazon Polly を使用した翻訳が実行できます。
 
-https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/hooks/use-convert-speech-to-text.ts
+https://github.com/kazuma-fujita/nextjs-amplify-text-to-speech/blob/main/src/hooks/use-convert-text-to-speech.ts
 
-`convertSpeechToText` 関数引数の bytes は用意されている BytesSource 型( Buffer | ArrayBuffer | Blob | string のユニオン型)なのですが筆者が試した所読み上げの実行結果、空文字が返却されてしまいました。
-
-Buffer[] | ArrayBuffer[]型のみ読み上げが実行されたので、今回 bytes 引数には仕方なく any 型を指定しています。
-
-また、source には後述する翻訳言語選択プルダウンで選択した言語の Language code を設定しています。
-
-# 音声録音カスタムフックを実装する
-
-以下 `microphone-stream` パッケージを利用した音声 stream 処理の実装です。
-
-公式サンプルを Typescript 化し、useSpeechToText hook として component から呼び出せるようにしています。
-
-サンプルを単純に Typescript 化しても動作せず何時間もハマったので、一部 any 型で逃げています。。
-
-https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/hooks/use-speech-to-text.ts
-
-また、録音停止をトリガーに前述した `convertSpeechToText` 関数を呼び出して読み上げを実行しています。
-
-# 翻訳画面を実装する
+# 音声読み上げ画面を実装する
 
 デザインは `create-next-app` で出力される CSS を利用します。
 
-以下読み上げをする言語選択プルダウンの実装となります。
+以下読み上げをする言語・音声選択プルダウンの実装となります。
 
-Select タグの options に Amplify Transcribe Streaming に対応する全言語の言語ラベルと Language code を設定します。
+Select タグの options に Amplify Polly に対応する全言語の言語ラベルと音声の ID である voiceId を設定します。
 
-言語選択プルダウンのデフォルト値は日本語の Language code に設定します。
+言語選択プルダウンのデフォルト値は日本語の NTTS 音声 Takumi に設定します。
 
-https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/data/language-options.ts
+https://github.com/kazuma-fujita/nextjs-amplify-text-to-speech/blob/main/src/data/language-options.ts
 
-https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/components/select-box.tsx
+https://github.com/kazuma-fujita/nextjs-amplify-text-to-speech/blob/main/src/components/select-box.tsx
 
-以下音声録音コンポーネントの実装です。
+以下音声読み上げコンポーネントの実装です。
 
-useSpeechToText hook を呼び出して録音の開始、終了、読み上げ結果の表示を行っています。
+useConvertTextToSpeech hook を呼び出して入力されたテキストを `convertTextToSpeech` 関数で音声変換、その結果の Blob URL Scheme である `speechBlobUrl` を生成します。
 
-https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/components/speech-to-text.tsx
+`speechBlobUrl` の値があれば、 `ReactAudioPlayer` で音声を再生します。
 
-以下プルダウンと音声録音コンポーネントの親コンポーネントです。
+`ReactAudioPlayer` に bool 値である `autoPlay` を設定すると `speechBlobUrl` が変わる度に音声を自動で再生してくれます。
 
-https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/src/components/speech-to-text-form.tsx
+https://github.com/kazuma-fujita/nextjs-amplify-text-to-speech/blob/main/src/components/text-to-speech.tsx
+
+以下プルダウンと音声読み上げコンポーネントの親コンポーネントです。
+
+https://github.com/kazuma-fujita/nextjs-amplify-text-to-speech/blob/main/src/components/text-to-speech-form.tsx
 
 最後に index.tsx をから入力フォームを呼び出して実装完了です。
 
-https://github.com/kazuma-fujita/nextjs-amplify-speech-to-text/blob/main/pages/index.tsx
+https://github.com/kazuma-fujita/nextjs-amplify-text-to-speech/blob/main/pages/index.tsx
 
-# Amazon Transcribe の料金
+# Amazon Polly の料金
 
-Amazon Transcribe は１か月あたりの読み上げされた音声データの秒数に基づいた従量課金です。
+Amazon Polly は１か月あたりの読み上げされた文字数に基づいた従量課金です。
 
-Batch 処理 と Amplify で使用している Streaming 処理に費用差はなく、0.024USD/分から使用時間によって 0.015USD、0.0102USD と割安になっていきます。
+TTS は 100 万字に対して 4.00 USD 、NTTS は 100 万字に対して 16.00 USD でした。
 
-例えば 1 時間の音声処理では 1.44USD となります。
+NTTS は TTS に比べて 4 倍の料金でした。
 
-https://aws.amazon.com/jp/polly/pricing/?p=ft&c=ml&z=3
+https://aws.amazon.com/jp/polly/pricing/
 
-ちなみに、Google の Cloud Speech-to-Text は 1 時間迄無料で、以降基本は 0.024USD となっていました。
+ちなみに、Google の Cloud Text-to-Speech は標準音声 4.00USD/100 万文字、Neural 音声 16.00USD/100 万文字でした。
 
-https://cloud.google.com/speech-to-text/pricing?hl=ja
+https://cloud.google.com/text-to-speech/pricing?hl=ja
+
+Cloud Text-to-Speech は Polly と同じような料金形態でした。
 
 # まとめ
 
-- Amplify Predictions カテゴリの Amazon Transcribe はリアルタイム音声読み上げが出来る Amazon Transcribe Streaming を使用している
-- Amazon Transcribe の対応言語は 37 言語。その中で Transcribe Streaming に対応している言語は 17 言語。
-- Transcribe Streaming は WAV にする前の生 PCM データを Websocket 通信でやり取りする
-- Transcribe Streaming に 音声 PCM データを投げるに当たって `microphone-stream` パッケージを使用して音声 stream を取得する必要がある
-- 読み上げ処理は `Predictions.convert` 関数の source に PCM データを指定して呼び出すだけで Amazon Transcribe Streaming が実行できる
-- 料金は Batch 処理 と Streaming 処理に費用差はなく、従量課金制。0.024USD/分から使用時間によって 0.015USD、0.0102USD と割安になっていく
+- Amazon Polly はテキストを音声に自動的に変換するサービスで計 36 の言語と方言に対応
+- Amazon Polly は言語に加え、Gender 別に様々な音声が用意されている。English(US)に関しては子供の音声まで対応
+- Amazon Polly にはニューラル TTS (NTTS) システムがあり、標準音声よりも高品質の音声を生成可能
+- Amplify Predications は NTTS / TTS 両対応の音声をサポート。NTTS のみ対応している音声は対応していない。それでも計 29 の言語と方言に対応した音声を選択可能
+- 読み上げ処理は `Predictions.convert` 関数の source に 入力テキストを指定して呼び出すだけで Amazon Polly が実行可能
+- 料金は１か月あたりの読み上げされた文字数に基づいた従量課金。TTS 4.00USD/100 万文字、NTTS 16.00USD/100 万文字

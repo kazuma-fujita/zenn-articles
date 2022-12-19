@@ -246,9 +246,7 @@ amplify push -y
 
 # フロントエンドで Amplify Configure を設定する
 
-以下公式ドキュメントを参考に Amplify Configure 設定をします。
-
-https://docs.amplify.aws/lib/predictions/getting-started/q/platform/js/#configure-the-frontend
+[公式ドキュメント](https://docs.amplify.aws/lib/predictions/getting-started/q/platform/js/#configure-the-frontend) を参考に Amplify Configure 設定をします。
 
 ```ts:__app.tsx
 import { Amplify } from 'aws-amplify';
@@ -262,17 +260,15 @@ Amplify.configure(awsconfig);
 Amplify.addPluggable(new AmazonAIPredictionsProvider());
 ```
 
-## Amplify.addPluggable でエラーが発生した場合
-
+:::message alert
 Next.js の `__app.tsx` で `Amplify.addPluggable` を呼び出すと以下のエラーが発生する場合があります。
 
 ```
 Error: Pluggable with name AmazonAIPredictionsProvider has already been added.
 ```
 
-以下過去記事でエラー回避方法について記載していますので参照ください。
-
-https://zenn.dev/zuma_lab/articles/nextjs-amplify-text-to-translate#amplify.addpluggable-%E3%81%A7%E3%82%A8%E3%83%A9%E3%83%BC%E3%81%8C%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%A0%B4%E5%90%88
+もしエラーが発声したら [筆者の過去記事](https://zenn.dev/zuma_lab/articles/nextjs-amplify-text-to-translate#amplify.addpluggable-%E3%81%A7%E3%82%A8%E3%83%A9%E3%83%BC%E3%81%8C%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%A0%B4%E5%90%88) でエラー回避方法について記載していますので参照ください。
+:::
 
 # 文字起こしカスタムフックを実装する
 
