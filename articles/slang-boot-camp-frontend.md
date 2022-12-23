@@ -12,7 +12,7 @@ published: true
 ---
 
 :::message
-この記事は [クソアプリ Advent Calendar 2022](https://qiita.com/advent-calendar/2022/kuso-app) 21 日目の記事です。
+この記事は [クソアプリ Advent Calendar 2022](https://qiita.com/advent-calendar/2022/kuso-app) の 21 日目の記事です。
 :::
 
 こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
@@ -99,7 +99,7 @@ https://zenn.dev/zuma_lab/articles/nextjs-amplify-speech-to-text
 
 英語学習において他にやること山の如しですが、なんかスラング覚えたいなーと思ってこのアプリを作りました。
 
-時間無くて 10 問しか作れなかったのですが、ほんとは初級編、中級編、上級編とかコース別に分けたかったです。
+時間無くて 17 問しか作れなかったのですが、ほんとは初級編、中級編、上級編とかコース別に分けたかったです。
 
 来年のクソアプではもっと長文スラングに挑戦していきます。
 
