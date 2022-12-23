@@ -1,5 +1,5 @@
 ---
-title: "学校や TOEIC で絶対出てこない英語フレーズの発音練習が出来るクソアプリ"
+title: "学校や TOEIC で絶対出てこない英語フレーズの発音練習が出来るアプリを作った"
 emoji: "🗣️"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
@@ -8,11 +8,11 @@ topics:
   - "amplify"
   - "aws"
   - "english"
-published: false
+published: true
 ---
 
 :::message
-この記事は [クソアプリ Advent Calendar 2022](https://qiita.com/advent-calendar/2022/kuso-app) 13 日目の記事です。
+この記事は [クソアプリ Advent Calendar 2022](https://qiita.com/advent-calendar/2022/kuso-app) 21 日目の記事です。
 :::
 
 こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
@@ -23,291 +23,84 @@ published: false
 
 このアプリで覚えたフレーズは英語のテストで一切役に立たない事を保証いたします。
 
-# 動機
-
-筆者の英語力は中二レベルです。
-
-いつか字幕無しで洋画を観るという目標がありますが、現状ハリウッド俳優が何を言ってるのかサッパリわかりません。
-
-筆者がリスニング出来ない理由として主に以下が挙げられます。
-
-- 英語力が中二で止まっている
-- ハリウッド俳優達の会話が速くて追いつけない
-- リンキング(単語間が繋がってる)してる
-- リダクション(本来発音されるべき音が発音されてない)してる
-- **スラングめっちゃ使ってる**
-
-英語学習において他にやること山の如しですが、とりあえずスラング覚えたいなーと思ってこのアプリを作りました。
+あと、所構わずスラングばっかり使ってると失礼な奴と思われるので、用量、用法を守って正しくお使いください。
 
 # こんなんです
 
 以下成果物です。
 
+https://main.d1ntt9o0lggnhf.amplifyapp.com/
+
+[![](https://storage.googleapis.com/zenn-user-upload/a6f607816db7-20221223.png)](https://main.d1ntt9o0lggnhf.amplifyapp.com/)
+
+デモ動画も作って YouTube に上げてみたのですが、あまりのスラング具合に年齢制限が課されてしまいました。
+
+https://youtu.be/8ew40RsloKw
+
+# 遊び方
+
 まず英語問題文が読み上げれます。次にユーザーはリスニングした問題文をスピーキングします。
 
-発音が正しければ日本語訳の解答が表示され次の問題が出題されます。
-
-発音が正しければすればスラングで祝ってくれますし、間違っていればスラングで罵られます。
-
-筆者が独断と偏見でレベル分けをした問題が全部で 30 問あります。
-
-正直実装とかより、問題考えるほうが大変でした。
+発音が正しければ祝ってくれますし、間違っていればスラングで罵られます。
 
 # やってること
 
-技術的には AWS Amplify の Predications カテゴリ(Amazon Polly と Amazon Transcribe)、 Next.js と React Audio Player を使ってます。
+以下技術スタックです。
 
-1. Amazon Polly で問題文読み上げ
-1. React Audio Player でユーザーの音声を録音
+- フロントエンド
+  - Next.js
+- ホスティング
+  - AWS Amplify
+- 問題文の音声読み上げ
+  - Amazon Polly
+- ユーザー音声のテキスト変換
+  - Amazon Transcribe
+- 音声録音、音声 PCM データ stream 処理
+  - Microphone Stream
+- 音声再生
+  - React Audio Player
+
+処理は以下の流れです。
+
+1. Amazon Polly で問題文を音声変換
+1. React Audio Player で音声再生
+1. Microphone Stream でユーザーの音声を録音
 1. Amazon Transcribe で音声からテキスト変換
 1. 変換されたテキストと問題文が合っているか判定
-1. 合っていれば次の問題
+1. 合っていれば次の問題、以下繰り返し
 
-# 実行環境
+音声録音の UX だけはこだわってて、音声の無音時間が 2 秒あると自動的に録音停止します。
 
-- Node
-  - 16.13.0
-- npm
-  - 8.1.0
-- Next.js
-  - 13.0.5
-- Amplify CLI
-  - 10.5.2
+アプリのソースコードはこちらです。
 
-# Next.js プロジェクトを作成する
+https://github.com/kazuma-fujita/slang-boot-camp-frontend
 
-以下コマンドを実行して Next.js プロジェクトを作成します。
+Amazon Polly の実装に関しては過去に記事を書いたので興味があればご覧ください。
 
-```
-npx create-next-app@latest --ts --use-npm --eslint slang-boot-camp-frontend
-```
+https://zenn.dev/zuma_lab/articles/nextjs-amplify-text-to-speech
 
-プロジェクトルートディレクトリへ移動します。
+Amazon Transcribe の実装も過去に記事を書きました。
 
-```
-cd slang-boot-camp-frontend
-```
+https://zenn.dev/zuma_lab/articles/nextjs-amplify-speech-to-text
 
-Amplify 関連パッケージをインストールします。
+# なんで作った
 
-```
-npm install aws-amplify @aws-amplify/predictions
-```
+筆者は字幕無しでハリウッド映画を観るという目標があります。
 
-音声を stream 処理する為、 `microphone-stream` パッケージをインストールします。
+ただ、現状ハリウッド俳優が何を言ってるのかサッパリわかりません。
 
-```
-npm install microphone-stream
-```
+たぶんこんな理由です。
 
-音声を再生する為、React Audio Player をインストールします。
+- 英語力が中二
+- ハリウッド俳優の会話速すぎ
+- リンキング(単語間が繋がってる)してる
+- リダクション(本来発音されるべき音が発音されてない)してる
+- **スラングめっちゃ使ってる!**
 
-```
-npm install react-audio-player
-```
+英語学習において他にやること山の如しですが、なんかスラング覚えたいなーと思ってこのアプリを作りました。
 
-# Amplify を設定する
+時間無くて 10 問しか作れなかったのですが、ほんとは初級編、中級編、上級編とかコース別に分けたかったです。
 
-Amplify Predictions カテゴリを使用する為には Amplify Auth カテゴリを追加する必要があります。
+来年のクソアプではもっと長文スラングに挑戦していきます。
 
-## Amplify Auth カテゴリを追加する
-
-前提として `amplify configure` で Amplify で使用する AWS リソースにアクセス可能な IAM ユーザーは作成済みとします。
-
-また、 `amplify init` で Amplify の初期化済みとします。
-
-プロジェクトルートで以下のコマンドを実行して Amplify Auth カテゴリを追加します。
-
-```
-amplify add auth
-```
-
-Cognito の設定は最低限メールアドレスとパスワードのみの認証とします。
-
-```
-Using service: Cognito, provided by: awscloudformation
-
- The current configured provider is Amazon Cognito.
-
- Do you want to use the default authentication and security configuration?
-❯ Default configuration
-  Default configuration with Social Provider (Federation)
-  Manual configuration
-  I want to learn more.
- How do you want users to be able to sign in?
-  Username
-❯ Email
-  Phone Number
-  Email or Phone Number
-  I want to learn more.
- Do you want to configure advanced settings? (Use arrow keys)
-❯ No, I am done.
-  Yes, I want to make some additional changes.
-✅ Successfully added auth resource nextjscognitomiddlewe0c8d7ed locally
-
-✅ Some next steps:
-"amplify push" will build all your local backend resources and provision it in the cloud
-"amplify publish" will build all your local backend and frontend resources (if you have hosting category added) and provision it in the cloud
-```
-
-# Amplify Predictions カテゴリを追加する
-
-## Text to speech (Amazon Polly) を追加する
-
-英語問題文を読み上げる為、Amazon Polly を使えるようにします。
-
-以下コマンドを追加して Amplify Predictions カテゴリを追加します。
-
-```
-amplify add predictions
-```
-
-以下設問は `Convert` を選択します。
-
-```
-? Please select from one of the categories below
-  Identify
-❯ Convert
-  Interpret
-  Infer
-  Learn More
-```
-
-以下設問は `Generate speech audio from text` を選択します。
-
-```
-? What would you like to convert?
-  Translate text into a different language
-❯ Generate speech audio from text
-  Transcribe text from audio
-```
-
-以下設問はデフォルトのままとします。
-
-```
-? Provide a friendly name for your resource (speechGeneratora239dcbe)
-```
-
-ソースとなるテキストの言語を設定します。 US English を選択します。
-
-```
-? What is the source language? (Use arrow keys)
-❯ US English
-  Turkish
-  Swedish
-  Russian
-  Romanian
-  Portuguese
-  Brazilian Portuguese
-(Move up and down to reveal more choices)
-```
-
-音声読み上げをするキャラ(?)を選択します。
-
-今回は Kevin にしました。
-
-```
-? Select a speaker (Use arrow keys)
-❯ Kevin - Male
-  Salli - Female
-  Matthew - Male
-  Kimberly - Female
-  Kendra - Female
-  Justin - Male
-  Joey - Male
-```
-
-今回は未認証のゲストユーザーでもアクセス出来ように設定します。
-
-```
-? Who should have access?
-  Auth users only
-❯ Auth and Guest users
-```
-
-## Transcribe audio to text (Amazon Transcribe) を追加する
-
-次に、ユーザーの音声からテキストに変換する為、Amazon Transcribe を使えるようにします。
-
-以下コマンドを再度実行します。
-
-```
-amplify add predictions
-```
-
-以下設問は `Convert` を選択します。
-
-```
-? Please select from one of the categories below
-  Identify
-❯ Convert
-  Interpret
-  Infer
-  Learn More
-```
-
-以下設問は `Transcribe text from audio` を選択します。
-
-```
-? What would you like to convert?
-  Translate text into a different language
-  Generate speech audio from text
-❯ Transcribe text from audio
-```
-
-以下設問はデフォルトのままとします。
-
-```
-? Provide a friendly name for your resource (transcription0e88a3c3)
-```
-
-ソースとなる音声の言語を選択します。US English を選択します。
-
-```
-? What is the source language?
-  British English
-❯ US English
-  French
-  Canadian French
-  US Spanish
-```
-
-未認証のゲストユーザーでもアクセス出来ように設定します。
-
-```
-? Who should have access?
-  Auth users only
-❯ Auth and Guest users
-```
-
-カテゴリを追加すると、以下 `aws-exports.js` に項目が追加されます。
-
-```json:bacend-config.json
-    "predictions": {
-        "convert": {
-            "speechGenerator": {
-                "region": "ap-northeast-1",
-                "proxy": false,
-                "defaults": {
-                    "VoiceId": "Kevin",
-                    "LanguageCode": "en-US"
-                }
-            },
-            "transcription": {
-                "region": "ap-northeast-1",
-                "proxy": false,
-                "defaults": {
-                    "language": "en-US"
-                }
-            }
-        }
-    }
-```
-
-以下のコマンドで作成した Amplify Auth と Predications カテゴリをクラウドにプロビジョニングします。
-
-```
-amplify push -y
-```
-
-# 画面を実装する
+それでは良いスラングライフを！
