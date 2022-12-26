@@ -91,7 +91,6 @@ https://zenn.dev/zuma_lab/articles/nextjs-amplify-speech-to-text
 
 たぶんこんな理由です。
 
-- 英語力が中二
 - ハリウッド俳優の会話速すぎ
 - リンキング(単語間が繋がってる)してる
 - リダクション(本来発音されるべき音が発音されてない)してる
