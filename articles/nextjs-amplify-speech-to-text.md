@@ -267,7 +267,7 @@ Next.js の `__app.tsx` で `Amplify.addPluggable` を呼び出すと以下の�
 Error: Pluggable with name AmazonAIPredictionsProvider has already been added.
 ```
 
-もしエラーが発声したら [筆者の過去記事](https://zenn.dev/zuma_lab/articles/nextjs-amplify-text-to-translate#amplify.addpluggable-%E3%81%A7%E3%82%A8%E3%83%A9%E3%83%BC%E3%81%8C%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%A0%B4%E5%90%88) でエラー回避方法について記載していますので参照ください。
+もしエラーが発生したら [筆者の過去記事](https://zenn.dev/zuma_lab/articles/nextjs-amplify-text-to-translate#amplify.addpluggable-%E3%81%A7%E3%82%A8%E3%83%A9%E3%83%BC%E3%81%8C%E7%99%BA%E7%94%9F%E3%81%97%E3%81%9F%E5%A0%B4%E5%90%88) でエラー回避方法について記載していますので参照ください。
 :::
 
 # 文字起こしカスタムフックを実装する
