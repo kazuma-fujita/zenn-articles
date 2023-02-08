@@ -3,10 +3,10 @@ title: "GPT-3 で ChatGPT みたいな LINEチャットボットを作る"
 emoji: "🤖"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
-  - "GPT3"
   - "ChatGPT"
   - "LINE"
   - "AWS"
+  - "Lambda"
   - "Amplify"
 published: true
 ---
