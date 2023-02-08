@@ -61,7 +61,7 @@ Python で Completions API を実行するコードも教えてくれます。
 
 あと今回 AI 関連の素振りという事で初めて触る Python で実装します。
 
-GPT-3 API を叩くだけで特に機械学習の実装をする訳では無いですが・・後学の勉強の為に Python で実装してみます。
+GPT-3 API を叩くだけで特に機械学習の実装をする訳では無いですが・・後学の為に Python で実装してみます。
 
 # 実行環境
 
@@ -581,7 +581,7 @@ AWS コンソールを開いて、AWS Systems Manager > アプリケーション
 
 ```
 
-/amplify/{AppID}/dev/AMPLIFY*lineChatGPTBotDemoFunction*{KeyName}
+/amplify/{AppID}/dev/AMPLIFY_lineChatGPTBotDemoFunction_{KeyName}
 
 ```
 
@@ -636,13 +636,13 @@ Secret values configuration
 
 ```
 
-/amplify/{AppID}/dev/AMPLIFY*lineChatGPTBotDemoFunction*{KeyName}
+/amplify/{AppID}/dev/AMPLIFY_lineChatGPTBotDemoFunction_{KeyName}
 
 ```
 
 ```
 
-? Enter the environment variable value: /amplify/XXXXXXXXXX/dev/AMPLIFY*lineChatGPTBotDemoFunction*
+? Enter the environment variable value: /amplify/XXXXXXXXXX/dev/AMPLIFY_lineChatGPTBotDemoFunction_
 
 ```
 
