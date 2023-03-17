@@ -17,12 +17,6 @@ published: true
 
 OpenAI から現在公開されている最新のチャットモデル API は `gpt-3.5-turbo` です。
 
-gpt-3.5-turbo で扱える最大トークン長は 4096 ですが、GPT-4 になると最大で 3 万 2 千超えのトークンが扱えるそうです。
-
-トークン長が長くなると ChatGPT のプロンプトで出来る事も増えるので夢が膨らみます。
-
-GPT-4 API の waitlist にも登録し、早く API が使えるようにならないかなと胸アツな日々が続いています。
-
 さて、今回は `gpt-3.5-turbo` モデル を使って、会話履歴と文脈を読んで回答してくれる ChatGPT の LINE チャットボットを作ってみました。
 
 会話の文脈を読むのは ChatGPT で普通に出来ることですが、ChatGPT API で自前で実装しようとすると少し工夫が必要だったので記事にしました。
@@ -60,6 +54,42 @@ LINE からの Request を受ける Lambda でユーザーからのメッセー�
 Amplify CLI で全てのリソースが作成出来るので、環境を捨てるのも簡単です。
 
 更には Amplify CLI でバックエンドの開発環境、本番環境を切り分ける方法も解説します。
+
+# DynamoDB テーブル構成について
+
+会話履歴を保存する DynamoDB の属性名とデータ型は以下となります。
+
+- Messages テーブル
+
+| プライマリーキー | GSI          | 属性名     | 属性データ型 |
+| ---------------- | ------------ | ---------- | ------------ |
+| id               | -            | ID         | String       |
+| -                | byLineUserId | lineUserId | String       |
+| -                | -            | content    | String       |
+| -                | -            | role       | String       |
+| -                | -            | createdAt  | String       |
+| -                | -            | updatedAt  | String       |
+
+複数ユーザーが LINE ボットを使用した時に会話履歴が混在しないようにする必要があります。
+
+ユーザー毎にユニークな lineUserId に対し GSI（グローバルセカンダリインデックス）を追加し byLineUserId というインデックス名に設定しています。
+
+この GSI を用いて lineUserId で DynamoDB に対するクエリ検索を行うことで高速に検索が可能かつ、複数ユーザーが使用しても会話履歴が混在しないようにします。
+
+ソートキーには createdAt が含まれており、クエリの結果は作成日時でソートされます。
+
+パーティションキーとソートキーをテーブルで表現すると以下になります。
+
+| パーティションキー | ソートキー | 属性                                            |
+| ------------------ | ---------- | ----------------------------------------------- |
+| id                 | -          | lineUserId, content, role, createdAt, updatedAt |
+| lineUserId (GSI)   | createdAt  | id, content, role, updatedAt                    |
+
+id には プログラムから発行したユニークな uuid を保存します。
+
+role には後述する gpt-3.5-turbo API のパラメーターである role を保存します。
+
+content にはユーザーと ChatGPT のメッセージを保存します。
 
 # gpt-3.5-turbo api の role について
 
@@ -793,7 +823,7 @@ Blank Schema を選択します。
 
 開かれた `schema.graphql` ファイルに以下スキーマを記述します。
 
-これはユーザーの入力プロンプトと ChatGPT の推論結果を保存するテーブルです。
+`amplify push` を実行するとユーザーの入力プロンプトと ChatGPT の推論結果を保存する DynamoDB テーブルが作成されます。
 
 ユーザーと ChatGPT との会話を履歴として残すテーブルですね。
 
@@ -808,13 +838,7 @@ type Messages @model {
 }
 ```
 
-Lambda 実行時に lineUserId をリクエストから取得してテーブルで対して検索を実行します。
-
-会話履歴の項目があればユーザーの入力プロンプトと一緒に ChatGPT に投げて、結果を取得します。
-
-ユーザーの入力プロンプト + 会話履歴をまとめて ChatGPT に推論させる事により、会話履歴や文脈を読んだ回答が可能な訳ですね。
-
-また簡単にスキーマの説明ですが、`@index` で `byLineUserId` という名前の GSI を作成します。
+簡単にスキーマの説明ですが、`@index` で `byLineUserId` という名前の GSI を作成します。
 
 GSI を作成すると、lineUserId で DynamoDB に Query を投げる事が出来ます。
 
