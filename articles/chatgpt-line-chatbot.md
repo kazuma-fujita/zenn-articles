@@ -1,5 +1,5 @@
 ---
-title: "ChatGPT API と LINE チャットボットで ChatGPT クローンを作る"
+title: "ChatGPT API と AWS Amplify で会話履歴と文脈を読んで回答する LINE ボット を作る"
 emoji: "🤖"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
@@ -13,45 +13,83 @@ published: true
 
 こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
 
-今回は ChatGPT API を使って、ChatGPT クローンの LINE チャットボットを作ってみました。
+3/15 に OpenAI から GPT-4 が公開され、Google からも大規模 LLM である PaLM が発表されたり毎日が目まぐるしいですね。
 
-GPT-3.5 モデルを実行する為に OpenAI の Completions API を使います。
+OpenAI から現在公開されている最新のチャットモデル API は `gpt-3.5-turbo` です。
 
-https://platform.openai.com/docs/api-reference/completions
+gpt-3.5-turbo で扱える最大トークン長は 4096 ですが、GPT-4 になると最大で 3 万 2 千超えのトークンが扱えるそうです。
 
-LINE チャットボットの入力を AWS Lambda に投げる、Lambda で Completions API を実行、レスポンスをチャットボットに表示という流れで実装します。
+トークン長が長くなると ChatGPT のプロンプトで出来る事も増えるので夢が膨らみます。
+
+GPT-4 API の waitlist にも登録し、早く API が使えるようにならないかなと胸アツな日々が続いています。
+
+さて、今回は `gpt-3.5-turbo` モデル を使って、会話履歴と文脈を読んで回答してくれる ChatGPT の LINE チャットボットを作ってみました。
+
+会話の文脈を読むのは ChatGPT で普通に出来ることですが、ChatGPT API で自前で実装しようとすると少し工夫が必要だったので記事にしました。
+
+ちなみにブログ記事の内容も一部 ChatGPT(GPT-4) に書いて貰っています。
 
 # 成果物
 
 以下成果物です。
 
-https://www.youtube.com/watch?v=-S_RCPWaQ6w
+https://youtu.be/7PEmEJv6L7U
 
-質問の仕方や内容によっては回答に数分かかったりします。
+このように会話履歴と文脈を読んで回答してくれます。
 
-どう改善すれば良いかアタリをつけて聞いてみました。
+![](https://storage.googleapis.com/zenn-user-upload/f9542a70ce9b-20230317.png)
 
-なるほど、Completions API の `max_tokens`や `n` パラメーターを調整すれば改善の余地はありそうですね。
+![](https://storage.googleapis.com/zenn-user-upload/e62fa4eeb8f5-20230317.png)
 
-![](https://storage.googleapis.com/zenn-user-upload/224ca62f7dc4-20230208.png)
+性格もフレンドリーでタメ口の口調で絵文字をいっぱい使うようにしてます。
 
-Python で Completions API を実行するコードも教えてくれます。
+![](https://storage.googleapis.com/zenn-user-upload/d26ee233248f-20230315.png)
 
-![](https://storage.googleapis.com/zenn-user-upload/91a061d4cbb9-20230208.png)
+もちろんマジメに聞けばマジメに答えてくれます。
 
-あとはコードのリファクタリング、コメントの追記までやってくれました。
+![](https://storage.googleapis.com/zenn-user-upload/f48e657174cc-20230315.png)
 
-![](https://storage.googleapis.com/zenn-user-upload/6915b55b9c6f-20230208.png)
+# バックエンド環境について
 
-# 前提
+今回バックエンド全て AWS Amplify を使用します。
 
-今回は以下前回記事の GPT-3 実装部分を GPT-3.5 に変更した差分のみを抜粋した記事となります。
+具体的には Amplify で REST API と Lambda、 DynamoDB を作成します。
 
-https://zenn.dev/zuma_lab/articles/gpt3-line-chatbot
+LINE からの Request を受ける Lambda でユーザーからのメッセージを取得、ChatGPT API で推論実行、メッセージを会話履歴として DynamoDB に保存をします。
 
-サーバ側である Amplify 環境の構築、LINE の各種トークン、OpenAI の API キー取得方法は前回の記事を参照ください。
+Amplify CLI で全てのリソースが作成出来るので、環境を捨てるのも簡単です。
 
-GPT-3.5 の Lambda 実装以外は前回記事の手順でボット作成出来ます。
+更には Amplify CLI でバックエンドの開発環境、本番環境を切り分ける方法も解説します。
+
+# gpt-3.5-turbo api の role について
+
+role とは、チャットモデルの入力と出力に影響するパラメーターです。
+
+role を設定することで、チャットモデルがどのような役割を担って会話するかを制御できます。
+
+role は messages パラメーターに含まれる各メッセージオブジェクトに設定する必要があります。
+
+messages パラメーターは、チャットモデルに渡す会話文の履歴を表す配列です。
+
+各メッセージオブジェクトは text と role を持ちます。
+
+role は以下の 3 種類があります。
+
+- system: チャットモデル自身の役割です。チャットモデルの性格や前提条件などを設定します。
+- user: チャットモデルと会話する人間の役割です。メッセージを入力してチャットモデルに送信します。
+- assistant: AI アシスタントの役割です。user からのメッセージに対して情報を提供します。
+
+今回は system ロールで AI モデルがフレンドリーな性格で絵文字を多めに使うように設定します。
+
+また、user と assistant ロールのメッセージを DynamoDB に保存し、ChatGPT API 実行前に会話履歴テーブルからメッセージを取得、会話履歴として入力プロンプトに含めます。
+
+実際に DynamoDB には以下のように user と assistant ロールが交互に保存されます。
+
+![](https://storage.googleapis.com/zenn-user-upload/7185a83eace4-20230317.png)
+
+会話履歴を ChatGPT API の入力プロンプトに含めることにより、文脈を読んだ推論が可能になります。
+
+また、複数ユーザーが使っても会話履歴が混在しないように DynamoDB を設計しています。
 
 # 実行環境
 
@@ -62,82 +100,257 @@ GPT-3.5 の Lambda 実装以外は前回記事の手順でボット作成出来�
 
 # 実装コード
 
+LINE や OpenAI のトークン・キー取得、Amplify の構築など前準備が長くなってしまったので、先にコードを出します。
+
 Python 初心者なので、ChatGPT にベースを書いてもらって後はググりながら書きました。
 
 ChatGPT に実装を助けて貰ってるので私が記法など理解してなかったりします。
 
 誤っている箇所あればマサカリお願いします。
 
+## ディレクトリ構成
+
+Lambda Function の ディレクトリ構成は以下となります。
+
+```
+amplify/backend/function/chatGPTLineChatBotFunction
+├── Pipfile
+├── Pipfile.lock
+├── amplify.state
+├── chatGPTLineChatBotFunction-cloudformation-template.json
+├── custom-policies.json
+├── function-parameters.json
+└── src
+    ├── aws_systems_manager.py
+    ├── chatgpt_api.py
+    ├── const.py
+    ├── db_accessor.py
+    ├── event.json
+    ├── guard.py
+    ├── index.py
+    ├── line_api.py
+    ├── line_request_body_parser.py
+    ├── message_repository.py
+    └── setup.py
+```
+
 ## OpenAI Completions API 実装
 
 OpenAI の Completions API を実行するコードです。
 
-細かい Completions API のパラメーターについては OpenAI の [こちら](https://platform.openai.com/docs/api-reference/completions/create) を参照ください。
+system ロールでモデルの性格を設定しています。
 
-https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/backend/function/lineChatGPTBotDemoFunction/src/gpt3_api.py
+content は英語の方が精度が高いので英語で設定しています。
 
-公式にも書いてますが、 `max_tokens` や `n` の値を大きくしすぎるとすぐに API の利用無料枠使ってしまう可能性があるので注意が必要です。
-
-OpenAI の API は無料枠 $18、有効期限 3 ヶ月です。
-
-また、ここは ChatGPT に頼らず書いたので、実装した後に気付いたのですが [OpenAI のライブラリ](https://platform.openai.com/docs/quickstart/build-your-application) がありました。。
-
-以下インストールして...
-
-```
-pipenv install openai
-```
-
-以下のように簡単に Completions API を実行する事ができます。
-
-```py
+```py:chatgpt_api.py
 import openai
-import sys
+import const
 
-prompt=f"{sys.argv[1]}->"
-response = openai.Completion.create(
-    model="text-davinci-003",
-    prompt=prompt)
+# Model name
+GPT3_MODEL = 'gpt-3.5-turbo'
 
-print(prompt+response['choices'][0]['text'])
+# Maximum number of tokens to generate
+MAX_TOKENS = 1024
+
+# Create a new dict list of a system
+# SYSTEM_PROMPTS = [{'role': 'system', 'content': '敬語を使うのをやめてください。友達のようにタメ口で話してください。また、絵文字をたくさん使って話してください。'}]
+SYSTEM_PROMPTS = [{'role': 'system', 'content': 'Please stop using polite language. Talk to me in a friendly way like a friend. Also, use a lot of emojis when you talk.'}]
+
+
+def completions(history_prompts):
+    messages = SYSTEM_PROMPTS + history_prompts
+
+    print(f"prompts:{messages}")
+    try:
+        openai.api_key = const.OPEN_AI_API_KEY
+        response = openai.ChatCompletion.create(
+            model=GPT3_MODEL,
+            messages=messages,
+            max_tokens=MAX_TOKENS
+        )
+        return response['choices'][0]['message']['content']
+    except Exception as e:
+        # Raise the exception
+        raise e
 ```
 
-最初から ChatGPT に実装方法を聞けば良かったです。
+今回はトークンが長くなりすぎないように設定パラメーターは `max_tokens` のみ設定しています。
 
-## LINE Messaging API 実装
+その他細かい Completions API のパラメーターについては OpenAI の [こちら](https://platform.openai.com/docs/api-reference/completions/create) を参照ください。
+
+## LINE API 実装
 
 次に LINE Bot に GPT-3 API のレスポンスを返却する実装です。
 
 ここは [LINE 公式のライブラリ](https://github.com/line/line-bot-sdk-python) を使用しました。
 
-https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/backend/function/lineChatGPTBotDemoFunction/src/line_api.py
+```py:line_api.py
+import const
+from linebot import LineBotApi
+from linebot.models import TextSendMessage
 
-ポイントとしては、GPT-3 API のレスポンスにはプロンプトの投げ方(質問の仕方)によってレスポンステキストの先頭に改行が入るので `strip` で改行を削除してます。
+def reply_message_for_line(reply_token, completed_text):
+    try:
+        # Create an instance of the LineBotApi with the Line channel access token
+        line_bot_api = LineBotApi(const.LINE_CHANNEL_ACCESS_TOKEN)
 
-```py
-completed_text = gpt3_api.completions(prompt)
-response_message = completed_text.strip()
+        # Reply the message using the LineBotApi instance
+        line_bot_api.reply_message(reply_token, TextSendMessage(text=completed_text))
+
+    except Exception as e:
+        # Raise the exception
+        raise e
 ```
 
-また、LINE ChatBOT で質問を入力した際に LINE サーバーから送られてくるリクエストは `event` で渡されますが、リクエストの値は以下のようになっています。
+## DynamoDB 実装
 
-https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/backend/function/lineChatGPTBotDemoFunction/src/event.json
+DynamoDB へのアクセスは boto3 を利用します。
 
-上記は見やすくする為、改行や細かい値を修正して json 形式に整形しているのですが、実際の LINE サーバーのリクエストに含まれる body の値は文字列になっていたりします。
+会話履歴を登録する PUT 関数、会話履歴を取得する QUERY 関数を作成しています。
 
-LINE Messaging API 実装時のポイントとして、body の値は `json.loads(event['body'])` として json 形式にパースしてから受信メッセージやリプライトークンを取得する必要があります。
+```py:db_accessor.py
+import boto3
+from datetime import datetime
+import const
 
-```py
-        # Parse the event body as a JSON object
-        event_body = json.loads(event['body'])
+TABLE_NAME = f'Messages{const.DB_TABLE_NAME_POSTFIX}'
+QUERY_INDEX_NAME = 'byLineUserId'
 
-        # Check if the event is a message type and is of text type
-        if event_body['events'][0]['type'] == 'message' and event_body['events'][0]['message']['type'] == 'text':
-            # Get the reply token from the event
-            replyToken = event_body['events'][0]['replyToken']
-            # Get the prompt text from the event
-            prompt = event_body['events'][0]['message']['text']
+dynamodb = boto3.client('dynamodb')
+
+
+def query_by_line_user_id(line_user_id: str, limit: int) -> list:
+    # Create a dictionary of query parameters
+    query_params = {
+        'TableName': TABLE_NAME,
+        'IndexName': QUERY_INDEX_NAME,
+        # Use a named parameter for the key condition expression
+        'KeyConditionExpression': '#lineUserId = :lineUserId',
+        # Define an expression attribute name for the hash key
+        'ExpressionAttributeNames': {
+            '#lineUserId': 'lineUserId'
+        },
+        # Define an expression attribute value for the hash key
+        'ExpressionAttributeValues': {
+            ':lineUserId': {'S': line_user_id}
+        },
+        # Sort the results in descending order by sort key
+        'ScanIndexForward': False,
+        # Limit the number of results
+        'Limit': limit
+    }
+
+    try:
+        # Call the query method of the DynamoDB client with the query parameters
+        query_result = dynamodb.query(**query_params)
+        # Return the list of items from the query result
+        return query_result['Items']
+    except Exception as e:
+        # Raise any exception that occurs during the query operation
+        raise e
+
+
+def put_message(partition_key: str, uid: str, role: str, content: str, now: datetime) -> None:
+    # Create a dictionary of options for put_item
+    options = {
+        'TableName': TABLE_NAME,
+        'Item': {
+            'id': {'S': partition_key},
+            'lineUserId': {'S': uid},
+            'role': {'S': role},
+            'content': {'S': content},
+            'createdAt': {'S': now.isoformat()},
+        },
+    }
+    # Try to put the item into the table using dynamodb client
+    try:
+        dynamodb.put_item(**options)
+
+    # If an exception occurs, re-raise it
+    except Exception as e:
+        raise e
 ```
+
+## 会話データ取得・登録・ChatGPT 推論実装
+
+会話履歴テーブルからデータの取得、登録、ChatGPT API の推論実行〜推論結果取得をする関数です。
+
+QUERY_LIMIT 定数の値は ChatGPT API の入力プロンプトに含める会話履歴数です。
+
+この値を大きくするとより多くの user と assistant の会話履歴を入力プロンプトに含める事ができます。
+
+ただし、gpt-3.5-turbo モデルは最大トークン長が 4096 なので、QUERY_LIMIT を大きくしすぎるとトークン長が長くなりすぎエラーとなるので注意が必要です。
+
+```py:message_repository.py
+import uuid
+from datetime import datetime
+
+import chatgpt_api
+import db_accessor
+import message_repository
+
+QUERY_LIMIT = 5
+
+
+def _fetch_chat_histories_by_line_user_id(line_user_id, prompt_text):
+    try:
+        if line_user_id is None:
+            raise Exception('To query an element is none.')
+
+        # Query messages by Line user ID.
+        db_results = db_accessor.query_by_line_user_id(line_user_id, QUERY_LIMIT)
+
+        # Reverse messages
+        reserved_results = list(reversed(db_results))
+
+        # Create new dict list of a prompt
+        chat_histories = list(map(lambda item: {"role": item["role"]["S"], "content": item["content"]["S"]}, reserved_results))
+        # Create the list of a current user prompt
+        current_prompts = [{"role": "user", "content": prompt_text}]
+
+        # Join the lists
+        return chat_histories + current_prompts
+
+    except Exception as e:
+        # Raise the exception
+        raise e
+
+
+def _insert_message(line_user_id, role, prompt_text):
+    try:
+        if prompt_text is None or role is None or line_user_id is None:
+            raise Exception('To insert elements are none.')
+
+        # Create a partition key
+        partition_key = str(uuid.uuid4())
+
+        # Put a record of the user into the Messages table.
+        db_accessor.put_message(partition_key, line_user_id, role, prompt_text, datetime.now())
+
+    except Exception as e:
+        # Raise the exception
+        raise e
+
+
+def create_completed_text(line_user_id, prompt_text):
+    # Query messages by Line user ID.
+    chat_histories = message_repository._fetch_chat_histories_by_line_user_id(line_user_id, prompt_text)
+
+    # Call the GPT3 API to get the completed text
+    completed_text = chatgpt_api.completions(chat_histories)
+
+    # Put a record of the user into the Messages table.
+    message_repository._insert_message(line_user_id, 'user', prompt_text)
+
+    # Put a record of the assistant into the Messages table.
+    message_repository._insert_message(line_user_id, 'assistant', completed_text)
+
+    return completed_text
+```
+
+このトークン数の調整はトークン長カウンター、tokeniser である [tiktoken](https://github.com/openai/tiktoken) を使えば出来そうです。
+
+今回はこのトークン長オーバーのエラーハンドリングは省いていますが、この処理も別で記事にしたいと思います。
 
 ## LINE サーバー以外からのリクエストを弾く
 
@@ -153,7 +366,26 @@ LINE Developers の公式で [署名の検証の方法](https://developers.line.
 
 以下実装コードです。
 
-https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/backend/function/lineChatGPTBotDemoFunction/src/guard.py
+```py:guard.py
+import hashlib
+import hmac
+import base64
+import const
+
+
+def verify_request(event):
+    x_line_signature = event["headers"].get("x-line-signature") or event["headers"].get("X-Line-Signature")
+    body = event["body"]
+
+    # Generate the signature using HMAC-SHA256
+    hash = hmac.new(const.LINE_CHANNEL_SECRET.encode('utf-8'), body.encode('utf-8'), hashlib.sha256).digest()
+    signature = base64.b64encode(hash)
+
+    # Compare the signature from the request headers with the generated signature
+    if signature != x_line_signature.encode():
+        raise Exception("Request verification failed. Request came from a non-LINE server source.")
+
+```
 
 ## LINE トークン ・ OpenAI API キーをシークレットから取得する
 
@@ -163,19 +395,93 @@ AWS Systems Manager のシークレットの登録方法は後述しますので
 
 boto3 で簡単に AWS System Manager から値を取得することが可能です。
 
-https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/backend/function/lineChatGPTBotDemoFunction/src/aws_systems_manager.py
+```py:aws_systems_manager.py
+import boto3
+from botocore.exceptions import ClientError
+
+# AWS region name
+AWS_REGION = "ap-northeast-1"
+
+
+def get_secret(secret_key):
+    try:
+        # Create a client for AWS Systems Manager
+        ssm = boto3.client('ssm', region_name=AWS_REGION)
+
+        # Get the secret from AWS SSM
+        response = ssm.get_parameter(
+            Name=secret_key,
+            WithDecryption=True
+        )
+
+        # Return the value of the secret
+        return response['Parameter']['Value']
+    except ClientError as e:
+        raise e
+```
 
 実装したモジュールを利用して、以下のように定数として取得出来るようにします。
 
-https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/backend/function/lineChatGPTBotDemoFunction/src/const.py
+```py:const.py
+import os
+import aws_systems_manager
 
-## Lambda 関数を実装する
+BASE_SECRET_PATH = os.environ.get('BASE_SECRET_PATH')
+DB_TABLE_NAME_POSTFIX = os.environ.get('DB_TABLE_NAME_POSTFIX')
+OPEN_AI_API_KEY = aws_systems_manager.get_secret(f'{BASE_SECRET_PATH}OPEN_AI_API_KEY')
+LINE_CHANNEL_SECRET = aws_systems_manager.get_secret(f'{BASE_SECRET_PATH}LINE_CHANNEL_SECRET')
+LINE_CHANNEL_ACCESS_TOKEN = aws_systems_manager.get_secret(f'{BASE_SECRET_PATH}LINE_CHANNEL_ACCESS_TOKEN')
+```
 
-最後に Lambda 関数を実装します。
+## Lambda の index.py 実装
 
-先程実装した LINE サーバー以外のリクエストを弾くモジュールと LINE Messaging API を実行するモジュールを呼び出します。
+最後に Lambda から最初に呼び出される index.py を実装します。
 
-https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/backend/function/lineChatGPTBotDemoFunction/src/index.py
+ここでは LINE サーバーからのリクエスト処理、ChatGPT の推論、推論結果を LINE サーバーに返却しています。
+
+また、先程実装した LINE サーバー以外のリクエストを弾くモジュールを呼び出しています。
+
+```py:index.py
+import json
+
+import guard
+import line_api
+import line_request_body_parser
+import message_repository
+
+
+def handler(event, context):
+    try:
+        # Verify if the request is valid
+        guard.verify_request(event)
+
+        # Parse the event body as a JSON object
+        event_body = json.loads(event['body'])
+        prompt_text = line_request_body_parser.get_prompt_text(event_body)
+        line_user_id = line_request_body_parser.get_line_user_id(event_body)
+        reply_token = line_request_body_parser.get_reply_token(event_body)
+        # Check if the event is a message type and is of text type
+        if prompt_text is None or line_user_id is None or reply_token is None:
+            raise Exception('Elements of the event body are not found.')
+
+        print(prompt_text.replace('\n', ''))
+
+        # Create the completed text by Chat-GPT 3.5 turbo
+        completed_text = message_repository.create_completed_text(line_user_id, prompt_text)
+        # Reply the message using the LineBotApi instance
+        line_api.reply_message_for_line(reply_token, completed_text)
+
+    except Exception as e:
+        # Log the error
+        print(e)
+
+        # Return 200 even when an error occurs as mentioned in Line API documentation
+        # https://developers.line.biz/ja/reference/messaging-api/#response
+        return {'statusCode': 200, 'body': json.dumps(f'Exception occurred: {e}')}
+
+    # Return a success message if the reply was sent successfully
+    return {'statusCode': 200, 'body': json.dumps('Reply ended normally.')}
+```
 
 ポイントとして、エラー時にもステータスコード 200 を返すようにしています。
 
@@ -187,6 +493,35 @@ https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/bac
 実際に 200 を返却しないと、例えば後述する LINE チャネルトークンを取得する際の手順で、LINE プラットフォームから Webhook の疎通確認をする箇所があります。
 
 疎通確認の際にリクエスト中に Webhook イベントが無い為、実装上エラーとなるのですが、その際に 200 を返却しないと疎通確認が成功しません。
+
+また、LINE ChatBOT で質問を入力した際に LINE サーバーから送られてくるリクエストは `event` で渡されますが、リクエストの値は以下のようになっています。
+
+https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/backend/function/lineChatGPTBotDemoFunction/src/event.json
+
+上記は見やすくする為、改行や細かい値を修正して json 形式に整形しているのですが、実際の LINE サーバーのリクエストに含まれる body の値は文字列になっていたりします。
+
+LINE サーバーからのリレエスト処理実装時のポイントとして、body の値は `json.loads(event['body'])` として json 形式にパースしてから受信メッセージやリプライトークンを取得する必要があります。
+
+パースした body から以下のようにしてユーザーのメッセージ、LINE ユーザー ID、LINE サーバーに返答する時に使用する replyToken が取得できます。
+
+```py:line_request_body_parser.py
+def get_prompt_text(event_body):
+    if event_body['events'][0]['type'] == 'message' and event_body['events'][0]['message']['type'] == 'text':
+        return event_body['events'][0]['message']['text']
+    return None
+
+
+def get_line_user_id(event_body):
+    if event_body['events'][0]['source'] and event_body['events'][0]['source']['type'] == 'user':
+        return event_body['events'][0]['source']['userId']
+    return None
+
+
+def get_reply_token(event_body):
+    if event_body['events'][0]['replyToken']:
+        return event_body['events'][0]['replyToken']
+    return None
+```
 
 以上、実装コードでした。
 
@@ -456,7 +791,7 @@ Blank Schema を選択します。
 ? Do you want to edit the schema now? (Y/n) ›
 ```
 
-`schema.graphql` ファイルに以下スキーマを記述します。
+開かれた `schema.graphql` ファイルに以下スキーマを記述します。
 
 これはユーザーの入力プロンプトと ChatGPT の推論結果を保存するテーブルです。
 
@@ -583,6 +918,8 @@ $ curl https://XXXXXXXX.execute-api.ap-northeast-1.amazonaws.com/dev/v1/line/bot
 ![](https://storage.googleapis.com/zenn-user-upload/638a5204960b-20230203.png)
 
 任意のプロバイダー名を入力して `作成` ボタンを押下します。
+
+※ 前回 GPT-3 の LINE チャットボットを作成した記事の画像を流用している為、ここでは GPT-3 としてますが正確には GPT-3.5 です。適宜読み替えて下さい。
 
 ![](https://storage.googleapis.com/zenn-user-upload/5ec75195c13f-20230203.png)
 
@@ -765,7 +1102,7 @@ AWS コンソールを開いて、AWS Systems Manager > アプリケーション
 
 ![](https://storage.googleapis.com/zenn-user-upload/faeb27b3892d-20230203.png)
 
-以下のパスを後から環境変数に登録するので控えておきます。
+以下のキー名の prefix (パス部分)を後から環境変数に登録するので控えておきます。
 
 ```
 
@@ -773,11 +1110,25 @@ AWS コンソールを開いて、AWS Systems Manager > アプリケーション
 
 ```
 
-# シークレットのキーを環境変数に設定する
+# シークレットのキー名 prefix と DynamoDB のテーブル名 postfix を Lambda の環境変数に設定する
 
-先程控えたシークレットのキー名を環境変数に設定します。
+先程控えたシークレットのキー名の prefix を Lambda の環境変数に設定します。
 
-Lambda から環境変数に登録されたシークレットのキーを使って、AWS SDK 経由で AWS Systems Manager からシークレットの値を取得します。
+Lambda から環境変数に登録されたシークレットの prefix のキーを使って、AWS SDK 経由で AWS Systems Manager からシークレットの値を取得します。
+
+また、`amplify push` 時に作成された DynamoDB のテーブル名には postfix の値が付与されています。
+
+![](https://storage.googleapis.com/zenn-user-upload/c3ba8927dd01-20230315.png)
+
+筆者の環境では既に複数の Amplify バックエンド環境があるのでテーブルが複数ありますが、通常なら `Messages-XXXXXXXXXXXXXXXXXX-dev` の 1 テーブルが作成されています。
+
+テーブル名の postfix `-XXXXXXXXXXXXXXXXXX-dev` 部分を環境変数に設定して Lambda から呼び出して使用します。
+
+この postfix は後述する開発環境、本番環境の切り替え時に参照するテーブルも自動的に切り替える為に使用します。
+
+こちらの値は後ほど登録するので控えておいてください。
+
+まずはシークレットのキー名 prefix を環境変数に設定します。
 
 以下コマンドを実行します。
 
@@ -823,31 +1174,54 @@ Secret values configuration
 `{AppID}` は自分の環境の値を入力します。
 
 ```
-
 /amplify/{AppID}/dev/AMPLIFY_lineChatGPTBotDemoFunction_{KeyName}
-
 ```
 
 ```
-
 ? Enter the environment variable value: /amplify/XXXXXXXXXX/dev/AMPLIFY_lineChatGPTBotDemoFunction_
+```
 
+次に DynamoDB のテーブル名 postfix を環境変数に登録します。
+
+`Add new environment variable` を選択します。
+
+```
+? Select what you want to do with environment variables: (Use arrow keys)
+❯ Add new environment variable
+Update existing environment variables
+Remove existing environment variables
+I'm done
+? Do you want to edit the local lambda function now? No
+```
+
+`DB_TABLE_NAME_POSTFIX` と命名しました。
+
+```
+? Enter the environment variable name: DB_TABLE_NAME_POSTFIX
+```
+
+先程控えておいたテーブル名の postfix を入力します。
+
+```
+? Enter the environment variable value: -XXXXXXXXXXXXXXXXXXXXXX-dev
 ```
 
 `I'm done` を選択し、次に N を入力し完了です。
 
 ```
-
 ? Select what you want to do with environment variables: (Use arrow keys)
 Add new environment variable
 Update existing environment variables
 Remove existing environment variables
 ❯ I'm done
 ? Do you want to edit the local lambda function now? No
-
 ```
 
 最後に `amplify push -y` を実行してクラウドに反映させてください。
+
+クラウドに反映させると Lambda コンソールの設定から作成した環境変数が確認できます。
+
+![](https://storage.googleapis.com/zenn-user-upload/3fcbbefee3fd-20230315.png)
 
 # 外部ライブラリをインストールする
 
@@ -873,9 +1247,9 @@ pipenv install openai
 
 ```
 
-# AWS Systems Manager のアクセス権限を設定する
+# AWS Systems Manager と DynamoDB のアクセス権限を設定する
 
-AWS Systems Manager の パラメーターストアにアクセスできる権限が無いと API 実行時に以下エラーが発生します。
+AWS Systems Manager の パラメーターストアにアクセスできる権限や DynamoDB の権限が無いと API 実行時に以下エラーが発生します。
 
 ```
 botocore.exceptions.ClientError: An error occurred (AccessDeniedException) when calling the GetParameters operation: User: arn:aws:iam::XXXXXXXXXXXX:user/ai-lab-amplify-cli-user is not authorized to perform: ssm:GetParameters on resource: arn:aws:ssm:ap-northeast-1:XXXXXXXXXXXX:parameter/OPEN_AI_API_KEY because no identity-based policy allows the ssm:GetParameters action
@@ -892,79 +1266,289 @@ Lambda Function のルートディレクトリに `custom-policies.json` があ�
 ```json
 [
   {
-    "Action": ["ssm:GetParameters", "ssm:GetParameter"],
-    "Resource": ["arn:aws:ssm:ap-northeast-1:XXXXXXXXXXXX:parameter/*"]
+    "Action": [
+      "ssm:GetParameters",
+      "ssm:GetParameter",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:GetItem",
+      "dynamodb:Scan",
+      "dynamodb:Query",
+      "dynamodb:UpdateItem"
+    ],
+    "Resource": [
+      "arn:aws:ssm:ap-northeast-1:XXXXXXXXXXXX:parameter/*",
+      "arn:aws:dynamodb:ap-northeast-1:XXXXXXXXXXXX:table/*"
+    ]
   }
 ]
 ```
 
-# DynamoDB のアクセス権限を設定する
+# Lambda の Timeout 値を延長する
+
+Amplify で作成する Lambda の Timeout 値はデフォルトで 25 秒です。
+
+ユーザーの入力プロンプトの内容や ChatGPT のアクセス状況次第ですが、ChatGPT API のレスポンスが 1 分を超える事があります。
+
+時には 2〜3 分経ってレスポンスが返って来ることがあります。
+
+Timeout 値が 25 秒だとタイムアウトエラーになって処理しきれない場合があるので以下 cloudformation-template.json を編集します。
+
+```
+vi amplify/backend/function/chatGPTLineChatBotFunction/chatGPTLineChatBotFunction-cloudformation-template.json
+```
+
+`Timeout` を好きな数値に変更します。
+
+Lambda に設定出来る最大の Timeout 値は 900 秒（15 分）です。
+
+筆者の場合、300 秒(5 分) に設定しています。
+
+```json
+        "Runtime": "python3.8",
+        "Layers": [],
+        "Timeout": 25 -> 300
+```
 
 これで実装の前準備が完了です。
 
 後は [実装コード](#実装コード) を参照して Lambda を実装していきましょう。
 
-# DynamoDB の疎通確認を行う
+# Amplify の開発環境と本番環境を切り替える
 
-:::message alert
-このパートは筆者が DynamoDB の疎通確認用 Lambda Function 作成作業履歴として残すものです。
+開発が進むにつれて Amplify のバックエンド開発環境と本番環境を切り替えたい場合が出てくると思います。
 
-通常こちらの作業は必要無いので読み飛ばしてください。
+`amplify env` コマンドで簡単に開発環境と本番環境を切り替える事が出来ます。
+
+:::message
+前提として、これまでに作成した LINE チャットボットは開発環境とし、新たに本番環境を追加する事とします。
+
+既に取得している LINE チャネルアクセストークン、 チェネルシークレット、OpenAI API キーとは別に、事前に本番環境用の各種トークン、API キーを作成してください。
 :::
 
-`amplify add function` を実行します。
+まずは `amplify env list` コマンドで現在の環境の状態を表示します。
 
 ```
-$ amplify add function
-? Select which capability you want to add: (Use arrow keys)
-❯ Lambda function (serverless function)
-  Lambda layer (shared code & resource used across functions)
+$ amplify env list
+
+| Environments |
+| ------------ |
+| *dev         |
 ```
 
-Lambda Function 名を決めます。今回は `checkDynamoDBConnectionFunction` と命名しました。
+`amplify add env` コマンドで本番環境を追加してみます。
+
+以下のようにコマンドの引数に環境名を指定できます。
 
 ```
-? Provide an AWS Lambda function name: checkDynamoDBConnectionFunction
+amplify add env prod
 ```
 
-言語は Python を選択します。
+amplify コマンドを実行する CLI ユーザーの profile を選択します。
 
 ```
-? Choose the runtime that you want to use:
-  .NET 6
-  Go
-  Java
-  NodeJS
-❯ Python
+$ amplify add env prod
+Note: It is recommended to run this command from the root of your app directory
+Using default provider  awscloudformation
+? Select the authentication method you want to use: (Use arrow keys)
+❯ AWS profile
+  AWS access keys
 ```
 
-次の設問は N を入力します。
+既に Lambda Function の環境変数を登録しているので、新しい環境に値を引き継ぐか追加するか選択します。
+
+今回は開発環境と本番環境で環境変数を分けるので `Update environment variables now` を選択します。
 
 ```
-Only one template found - using Hello World by default.
-
-Available advanced settings:
-- Resource access permissions
-- Scheduled recurring invocation
-- Lambda layers configuration
-- Environment variables configuration
-- Secret values configuration
-
-? Do you want to configure advanced settings? (y/N)
+? You have configured environment variables for functions. How do you want to proceed? …  (Use arrow keys or type to filter)
+  Carry over existing environment variables to this new environment
+❯ Update environment variables now
 ```
 
-最後の設問で Y を入力して Lambda Function の index.py を開きます。
+環境変数を追加する Lambda Function を選択します。
 
 ```
-? Do you want to edit the local lambda function now? Yes
+? Select the Lambda function you want to update values …  (Use arrow keys or type to filter)
+❯ chatGPTLineChatBotFunction
+  I'm done
 ```
 
-コードを書く事前準備として Lambda のルートディレクトリに移動して boto3 をインストールします。
+追加する環境変数を選択します。
 
 ```
-cd amplify/backend/function/checkDynamoDBConnectionFunction
-pipenv install boto3
+? Which function's environment variables do you want to edit? …  (Use arrow keys or type to filter)
+  DB_TABLE_NAME_POSTFIX
+❯ BASE_SECRET_PATH
+  I'm done
 ```
+
+既存の環境では `BASE_SECRET_PATH` に以下値を設定しています。
+
+`{AppID}` は皆さんそれぞれの Amplify 固有の ID です。
+
+```
+/amplify/{AppID}/dev/AMPLIFY_chatGPTLineChatBotFunction_
+```
+
+パスに含まれている `dev` を 本番環境である `prod` に書き換えて上書き登録します。
+
+```
+? Enter the environment variable value: › /amplify/{AppID}/prod/AMPLIFY_chatGPTLineChatBotFunction_
+```
+
+環境変数の上書きが完了したので `I'm done` を選択して終了します。
+
+```
+? Which function's environment variables do you want to edit? …  (Use arrow keys or type to filter)
+  BASE_SECRET_PATH
+❯ I'm done
+? Select the Lambda function you want to update values …  (Use arrow keys or type to filter)
+  chatGPTLineChatBotFunction
+❯ I'm done
+```
+
+次に、既に `AWS Systems Manager Parameter Store` に LINE チャネルアクセストークン、 チェネルシークレット、OpenAI API キーを登録しているので新たにシークレットを登録します。
+
+新たに本番環境用の各種トークン、API キーのシークレットを追加します。
+
+値を既存のシークレットから引き継ぐか更新するか聞かれるので `Update secret values now` を選択します。
+
+```
+? You have configured secrets for functions. How do you want to proceed?
+  Carry over existing secret values to the new environment
+❯ Update secret values now (you can always update secret values later using `amplify update function`)
+```
+
+先程同様、対象の Lambda Function を選択します。
+
+```
+? Select a function to update secrets for: (Use arrow keys)
+❯ chatGPTLineChatBotFunction
+  I'm done
+```
+
+`Update a secret` を選択します。
+
+```
+? What do you want to do?
+  Add a secret
+❯ Update a secret
+  Remove secrets
+  I'm done
+```
+
+追加するシークレットのキーを選択します。
+
+```
+? Select the secret to update: (Use arrow keys)
+❯ LINE_CHANNEL_ACCESS_TOKEN
+  OPEN_AI_API_KEY
+  LINE_CHANNEL_SECRET
+```
+
+シークレットの値を入力します。
+
+```
+? Enter the value for LINE_CHANNEL_ACCESS_TOKEN: [hidden]
+```
+
+他のシークレットの追加するので、 `Update a secret` を選択します。
+
+```
+? What do you want to do? Update a secret
+```
+
+先程同様作業を繰り返し他のシークレットの値を入力していきます。
+
+```
+? Select the secret to update: OPEN_AI_API_KEY
+? Enter the value for OPEN_AI_API_KEY: [hidden]
+? What do you want to do? Update a secret
+? Select the secret to update: LINE_CHANNEL_SECRET
+? Enter the value for LINE_CHANNEL_SECRET: [hidden]
+```
+
+最後に `I'm done` で終了します。
+
+```
+? What do you want to do? (Use arrow keys)
+  Add a secret
+  Update a secret
+  Remove secrets
+❯ I'm done
+? Select a function to update secrets for:
+  chatGPTLineChatBotFunction
+❯ I'm done
+
+```
+
+この時点で AWS Systems Manager Parameter Store を確認すると以下のように新たにシークレットが追加されています。
+
+![](https://storage.googleapis.com/zenn-user-upload/bb9dd530a7c3-20230315.png)
+
+また、 `amplify env list` コマンドで環境を確認すると `prod` 環境が追加されています。
+
+```
+$ amplify env list
+
+| Environments |
+| ------------ |
+| dev          |
+| *prod        |
+```
+
+`amplify status` で環境の状態が確認できます。
+
+```
+$ amplify status
+
+    Current Environment: prod
+
+┌──────────┬──────────────────────────────┬───────────┬───────────────────┐
+│ Category │ Resource name                │ Operation │ Provider plugin   │
+├──────────┼──────────────────────────────┼───────────┼───────────────────┤
+│ Api      │ chatGPTLineChatBotGraphQLApi │ Create    │ awscloudformation │
+├──────────┼──────────────────────────────┼───────────┼───────────────────┤
+│ Api      │ chatGPTLineChatBotRestApi    │ Create    │ awscloudformation │
+├──────────┼──────────────────────────────┼───────────┼───────────────────┤
+│ Function │ chatGPTLineChatBotFunction   │ Create    │ awscloudformation │
+└──────────┴──────────────────────────────┴───────────┴───────────────────┘
+
+GraphQL transformer version: 2
+```
+
+忘れずに `amplify push -y` で AWS のクラウドに反映させましょう。
+
+最後に amplify push が完了して作成されたリソースの中の DynamoDB のテーブル名 postfix を環境変数に登録します。
+
+DynamoDB コンソールを確認してテーブル名の postfix である `-XXXXXXXXXXXXXXXXXXXXX-prod` を控えておきます。
+
+![](https://storage.googleapis.com/zenn-user-upload/c3ba8927dd01-20230315.png)
+
+`amplify update function` を実行して以下のように入力します。
+
+```
+$ amplify update function
+? Select the Lambda function you want to update chatGPTLineChatBotFunction
+? Which setting do you want to update? Environment variables configuration
+? Select what you want to do with environment variables: Add new environment variable
+? Enter the environment variable name: DB_TABLE_NAME_POSTFIX
+? Enter the environment variable value: -XXXXXXXXXXXXXXXXXXXXX-prod
+? Select what you want to do with environment variables: I'm done
+? Do you want to edit the local lambda function now? No
+```
+
+再度 `amplify push -y` コマンドを実行して AWS クラウドに反映させます。
+
+クラウドに反映させると Lambda コンソールの設定から作成した環境変数が取得できます。
+
+各環境変数の値に本番環境である `prod` という識別子がついていますね。
+
+![](https://storage.googleapis.com/zenn-user-upload/c53a5a1f5b6f-20230315.png)
+
+環境の移動は `amplify env checkout {envName}` コマンドを使用します。
+
+開発時の作業は `amplify env checkout dev` で開発環境、本番反映の時は `amplify env checkout prod` で本番環境に切り替えて `amplify push` を実行しましょう。
 
 # おまけ
 
@@ -986,6 +1570,14 @@ https://github.com/kazuma-fujita/line-chat-gpt-bot-demo/blob/develop/amplify/bac
 見やすくする為、実際のリクエストの値から改行や細かい値を修正して json 形式に整形しています。
 :::
 
-# 参考サイト
+また、`amplify mock` でローカルから DynamoDB を実行するするには以下 CLI の IAM ユーザーに DynamoDB へのアクセス権限を付与する必要があります。
 
-- [LINE の Webhook からのアクセスを”x-line-signature”を用いて検証する](https://poota.net/archives/362)
+今回はポリシーを作成して DynamoDB のアクセス権限をユーザーに紐付けました。
+
+![](https://storage.googleapis.com/zenn-user-upload/7647829d4580-20230317.png)
+
+![](https://storage.googleapis.com/zenn-user-upload/b6ffe0bffe1e-20230317.png)
+
+![](https://storage.googleapis.com/zenn-user-upload/8b9cb394b6e5-20230317.png)
+
+参考になれば幸いです。
