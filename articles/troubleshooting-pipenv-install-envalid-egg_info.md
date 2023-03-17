@@ -1,5 +1,5 @@
 ---
-title: "Amplifyで作成したLambda(Python)で発生するinvalid command 'egg_info'エラートラブルシューティング"
+title: "Amplifyで作成したLambda(Python)で発生するinvalid command 'egg_info'エラー解決法"
 emoji: "🚨"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
