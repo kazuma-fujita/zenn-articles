@@ -557,7 +557,9 @@ def get_reply_token(event_body):
 
 次から実装前準備の手順となるので、まずは以降手順の完了後コードを実装してください。
 
-# Amplify を初期化する
+# Amplify CLI でリソースを作成する
+
+## Amplify を初期化する
 
 :::message
 前提として `amplify configure` で Amplify で使用する AWS リソースにアクセス可能な IAM ユーザーは作成済みとします。
@@ -619,7 +621,7 @@ Project information
 ? Help improve Amplify CLI by sharing non sensitive configurations on failures (y/N) ›
 ```
 
-# Amplify API カテゴリを追加する
+## Amplify API カテゴリを追加する
 
 Amplify で LINE チャットボットからのリクエストを受ける REST API を作成します。
 
@@ -745,7 +747,7 @@ To access AWS resources outside of this Amplify app, edit the /Users/kazuma/Docu
 
 ```
 
-# DynamoDB 用の Amplify API カテゴリを追加する
+## DynamoDB 用の Amplify API カテゴリを追加する
 
 今回のテーマとして Amplify のみでバックエンドを構築します。
 
@@ -754,7 +756,7 @@ DynamoDB を作成して Amplify で管理をする為、GraphQL(内部的には
 :::message alert
 今回検証で DynamoDB を使いたいだけで GraphQL は使用しない為、無駄な AppSync リソースを作成する事になります。
 
-本番環境などプロダクトに導入する際は、ちゃんと CloudFormation や CDK を利用して DynamoDB のみを構築してください！
+本番環境などプロダクトに導入する際は CloudFormation や CDK を利用して DynamoDB を構築する事も検討ください。
 :::
 
 プロジェクトルートで以下のコマンドを実行して Amplify API カテゴリを追加します。
@@ -844,7 +846,7 @@ GSI を作成すると、lineUserId で DynamoDB に Query を投げる事が出
 
 また、sortKeyFields に `createdAt` を指定する事により、Query 結果を作成日時でソートする事が出来ます。
 
-# API カテゴリをクラウドに反映する
+## API カテゴリをクラウドに反映する
 
 `amplify status` コマンドで現在のカテゴリの状態を確認します。
 
@@ -1021,11 +1023,13 @@ Messaging API 設定タブにある、LINE 公式アカウント機能 > 応答�
 
 ![](https://storage.googleapis.com/zenn-user-upload/47f067ba39fe-20230203.png)
 
-# LINE 各種トークン、OpenAI API キーをシークレットを設定する
+# 取得した各種トークン、API キーを安全に扱う
 
 取得した LINE チャネルアクセストークン、 チェネルシークレット、OpenAI API キーを悪用されないよう、AWS Systems Manager のシークレットに登録し Lambda 関数から呼び出すようにします。
 
 具体的には Amplify CLI から AWS Systems Manager Parameter Store にシークレットを保存、環境変数にキーを保存し Lambda 関数内から AWS SDK 経由にシークレットを取得できます。
+
+## LINE 各種トークン、OpenAI API キーをシークレットを設定する
 
 以下コマンドを実行します。
 
@@ -1134,7 +1138,7 @@ AWS コンソールを開いて、AWS Systems Manager > アプリケーション
 
 ```
 
-# シークレットのキー名 prefix と DynamoDB のテーブル名 postfix を Lambda の環境変数に設定する
+## シークレットのキー名 prefix と DynamoDB のテーブル名 postfix を Lambda の環境変数に設定する
 
 先程控えたシークレットのキー名の prefix を Lambda の環境変数に設定します。
 
@@ -1257,7 +1261,7 @@ Lambda Function のルートディレクトリに移動します。
 
 ```
 
-cd amplify/backend/function/lineChatGPTBotDemoFunction/
+cd amplify/backend/function/chatGPTLineChatBotFunction/
 
 ```
 
