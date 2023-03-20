@@ -4,12 +4,19 @@ emoji: "🤖"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
   - "ChatGPT"
+  - "OpenAI"
   - "LINE"
   - "AWS"
-  - "Lambda"
   - "Amplify"
 published: true
 ---
+
+:::message
+3/18 から GPT-4 API waitlist に登録しているユーザー向けに GPT-4 API の β 版が利用可能になりました。
+GPT-4 API を使用した LINE チャットボットの作り方については以下記事を参照ください。
+
+https://zenn.dev/zuma_lab/articles/gpt-4-line-chatbot
+:::
 
 こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
 
