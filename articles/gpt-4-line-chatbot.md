@@ -64,6 +64,8 @@ ChatGPT に翻訳して貰いました。
 
 ![](https://storage.googleapis.com/zenn-user-upload/d26ee233248f-20230315.png)
 
+# GPT-4 と GPT-3.5 比較
+
 前回の記事では `gpt-3.5-turbo` モデルを使用して LINE チャットボットを作成しました。
 
 https://zenn.dev/zuma_lab/articles/chatgpt-line-chatbot
@@ -80,13 +82,13 @@ https://zenn.dev/zuma_lab/articles/chatgpt-line-chatbot
 
 ![](https://storage.googleapis.com/zenn-user-upload/3ff7fe22e0fe-20230320.png)
 
-確かに回答に含まれている一番最初の文字は指定した文字から始まっていますが、文中の文章の始まりの文字はこちらが期待する結果とは大きく異なっています。
+確かに回答に含まれている一番最初の文字は指定した文字から始まっていますが、文中の文章の始まりの文字はそれぞれ「あ」から「お」の文字で始まっていません。
 
 次に `gpt-4` モデルの回答です。
 
 ![](https://storage.googleapis.com/zenn-user-upload/4d461efed2d0-20230320.png)
 
-すごいですね、回答に含まれている全ての文章の始まりが指定した文字となっています。
+すごいですね、回答に含まれている文中の文章それぞれ全て「あ」から「お」の文字で始まっています。
 
 次に、以下手順のテーブル作成指示を与え、指示した通りの手順をどこまで覚えているか試してみました。
 
@@ -100,10 +102,10 @@ https://zenn.dev/zuma_lab/articles/chatgpt-line-chatbot
 
 2. テーブルに追加:
 
-```
-D ブルー 4000
-E グリーン 5000
-```
+| 機種 |  カラー  | 金額 |
+| :--: | :------: | :--: |
+|  D   |  ブルー  | 4000 |
+|  E   | グリーン | 5000 |
 
 3. テーブルから削除:
 
@@ -113,20 +115,22 @@ E グリーン 5000
 
 4. テーブルに追加:
 
-```
-F ホワイト 6000
-G ピンク 7000
-```
+| 機種 |  カラー  | 金額 |
+| :--: | :------: | :--: |
+|  F   | ホワイト | 6000 |
+|  G   |  ピンク  | 7000 |
 
 まず、`gpt-3.5-turbo` モデルの回答です。
 
-![](https://storage.googleapis.com/zenn-user-upload/5facf020cb06-20230320.png)
+![](https://storage.googleapis.com/zenn-user-upload/1ef16a997466-20230321.png)
+
+![](https://storage.googleapis.com/zenn-user-upload/f86c7e011297-20230321.png)
 
 テーブル作成手順を実行した後に「今まで指示した内容を箇条書きにしてください」と聞いた所、テーブル作成の手順が間違えています。
 
 最初に作成したテーブルのデータは 「A」「B」「C」です。
 
-「D」と「E」のデータも最初に作成したテーブルに含まれてしまいました。
+最初に作成したテーブルに「D」と「E」のデータは含まれてはいけません。
 
 `gpt-3.5-turbo` モデルの最大トークン長が 4,096 トークンの為、プログラム側で入力プロンプトに含める会話履歴の数を制限しています。
 
@@ -135,6 +139,8 @@ G ピンク 7000
 さらに、「フレンドリーな性格で絵文字をたくさん使う」チャットボットの性格はもはや機能してません。
 
 次に `gpt-4` モデルの回答です。
+
+![](https://storage.googleapis.com/zenn-user-upload/7a993fe3ff98-20230321.png)
 
 ![](https://storage.googleapis.com/zenn-user-upload/eea69c67f43e-20230320.png)
 
