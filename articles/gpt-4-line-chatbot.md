@@ -1155,49 +1155,39 @@ Messaging API 設定タブにある、LINE 公式アカウント機能 > 応答�
 以下コマンドを実行します。
 
 ```
-
 amplify update function
-
 ```
 
 シークレットを設定する Lambda 関数を指定します。
 
 ```
-
 ? Select the Lambda function you want to update chatGPTLineChatBotFunction
-
 ```
 
 `Secret values configuration` を選択します。
 
 ```
-
 ? Which setting do you want to update?
 Resource access permissions
 Scheduled recurring invocation
 Lambda layers configuration
 Environment variables configuration
 ❯ Secret values configuration
-
 ```
 
 LINE チャネルアクセストークンのキー名を入力します。
 
 ```
-
 ? Enter a secret name (this is the key used to look up the secret value): LINE_CHANNEL_ACCESS_TOKEN
-
 ```
 
 キーの値を入力します。
 
 ```
-
 ? Enter the value for LINE_CHANNEL_ACCESS_TOKEN: [hidden]
-
 ```
 
-続いて OpenAI の API キーを登録するので、 `Add a secret` を選択します。
+続いて LINE チャネルシークレットを登録するので、 `Add a secret` を選択します。
 
 ```
 
@@ -1212,27 +1202,40 @@ I'm done
 API キー名を入力します。
 
 ```
-
-? Enter a secret name (this is the key used to look up the secret value): OPEN_AI_API_KEY
-
+? Enter a secret name (this is the key used to look up the secret value): LINE_CHANNEL_SECRET
 ```
 
 キーの値を入力します。
 
 ```
-
-? Enter the value for OPEN_AI_API_KEY: [hidden]
-
+? Enter the value for LINE_CHANNEL_SECRET: [hidden]
 ```
 
-同じ要領で、LINE のチャネルシークレットも登録してください。
+続いて OpenAI の API キーを登録するので、 `Add a secret` を選択します。
 
-キー名は `LINE_CHANNEL_SECRET` で、値は先程 LINE Developers コンソールで控えておいた値です。
+```
+? What do you want to do?
+❯ Add a secret
+Update a secret
+Remove secrets
+I'm done
+```
+
+API キー名を入力します。
+
+```
+? Enter a secret name (this is the key used to look up the secret value): OPEN_AI_API_KEY
+```
+
+キーの値を入力します。
+
+```
+? Enter the value for OPEN_AI_API_KEY: [hidden]
+```
 
 3 種類のキーの登録が終わったら作業を終了するので、 `I'm done` を選択、次の設問は Y を入力します。
 
 ```
-
 ? What do you want to do? (Use arrow keys)
 Add a secret
 Update a secret
@@ -1242,7 +1245,6 @@ Remove secrets
 Use the AWS SSM GetParameter API to retrieve secrets in your Lambda function.
 More information can be found here: https://docs.aws.amazon.com/systems-manager/latest/APIReference/API_GetParameter.html
 ? Do you want to edit the local lambda function now? No
-
 ```
 
 この時点で、 AWS Systems Manager Parameter Store に指定したキーと値からシークレットが登録されます。
@@ -1318,12 +1320,14 @@ Secret values configuration
 
 キーの値を入力します。
 
-先程控えておいたシークレットのキー名の `{KeyName}` を省いた値を入力します。
+先程控えておいたシークレットのキー名の `{KeyName}` を省いた prefix の値を入力します。
 
 `{AppID}` は自分の環境の値を入力します。
 
 ```
 /amplify/{AppID}/dev/AMPLIFY_lineChatGPTBotDemoFunction_{KeyName}
+→
+/amplify/XXXXXXXXXX/dev/AMPLIFY_lineChatGPTBotDemoFunction_
 ```
 
 ```
