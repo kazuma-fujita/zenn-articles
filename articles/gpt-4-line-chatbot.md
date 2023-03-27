@@ -1385,19 +1385,15 @@ Lambda Layers を使用して複数の Lambda で外部ライブラリを共有�
 Lambda Function のルートディレクトリに移動します。
 
 ```
-
 cd amplify/backend/function/chatGPTLineChatBotFunction/
-
 ```
 
 今回使う外部ライブラリをインストールします。
 
 ```
-
 pipenv install boto3
 pipenv install line-bot-sdk
 pipenv install openai
-
 ```
 
 # AWS Systems Manager と DynamoDB のアクセス権限を設定する
@@ -1530,8 +1526,8 @@ Using default provider  awscloudformation
 
 ```
 ? Which function's environment variables do you want to edit? …  (Use arrow keys or type to filter)
-  DB_TABLE_NAME_POSTFIX
 ❯ BASE_SECRET_PATH
+  DB_TABLE_NAME_POSTFIX
   I'm done
 ```
 
@@ -1549,16 +1545,23 @@ Using default provider  awscloudformation
 ? Enter the environment variable value: › /amplify/{AppID}/prod/AMPLIFY_chatGPTLineChatBotFunction_
 ```
 
-環境変数の上書きが完了したので `I'm done` を選択して終了します。
+環境変数の追加が完了したので `I'm done` を選択して終了します。
 
 ```
 ? Which function's environment variables do you want to edit? …  (Use arrow keys or type to filter)
   BASE_SECRET_PATH
 ❯ I'm done
+```
+
+次の設問では環境変数の追加を終了する為 `I'm done` を選択します。
+
+```
 ? Select the Lambda function you want to update values …  (Use arrow keys or type to filter)
-  chatGPTLineChatBotFunction
+  customGPTLineBotFunction
 ❯ I'm done
 ```
+
+`DB_TABLE_NAME_POSTFIX` は amplify push を実行しないと値が分からないため後ほど追加します。
 
 次に、既に `AWS Systems Manager Parameter Store` に LINE チャネルアクセストークン、 チェネルシークレット、OpenAI API キーを登録しているので新たにシークレットを登録します。
 
