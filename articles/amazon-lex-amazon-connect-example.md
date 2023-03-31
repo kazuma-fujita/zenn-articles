@@ -74,7 +74,7 @@ Amazon Lex コンソールの `ボットを作成` ボタンを押下します�
 
 `完了` ボタンを押下してボットを作成します。
 
-![](https://storage.googleapis.com/zenn-user-upload/c58b7c691ae2-20230217.png)
+![](https://storage.googleapis.com/zenn-user-upload/ccb1074459f5-20230331.png)
 
 # Amazon Connect を構築する
 

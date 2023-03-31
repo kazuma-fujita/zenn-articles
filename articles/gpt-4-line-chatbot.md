@@ -434,7 +434,6 @@ from datetime import datetime
 
 import chatgpt_api
 import db_accessor
-import message_repository
 
 QUERY_LIMIT = 10
 
@@ -481,16 +480,16 @@ def _insert_message(line_user_id, role, prompt_text):
 
 def create_completed_text(line_user_id, prompt_text):
     # Query messages by Line user ID.
-    chat_histories = message_repository._fetch_chat_histories_by_line_user_id(line_user_id, prompt_text)
+    chat_histories = _fetch_chat_histories_by_line_user_id(line_user_id, prompt_text)
 
     # Call the GPT3 API to get the completed text
     completed_text = chatgpt_api.completions(chat_histories)
 
     # Put a record of the user into the Messages table.
-    message_repository._insert_message(line_user_id, 'user', prompt_text)
+    _insert_message(line_user_id, 'user', prompt_text)
 
     # Put a record of the assistant into the Messages table.
-    message_repository._insert_message(line_user_id, 'assistant', completed_text)
+    _insert_message(line_user_id, 'assistant', completed_text)
 
     return completed_text
 ```
@@ -747,45 +746,35 @@ Amplify で LINE チャットボットからのリクエストを受ける REST 
 プロジェクトルートで以下のコマンドを実行して Amplify API カテゴリを追加します。
 
 ```
-
 amplify add api
-
 ```
 
 REST を選択します。
 
 ```
-
 $ amplify add api
 ? Select from one of the below mentioned services:
 GraphQL
 ❯ REST
-
 ```
 
 API 名を決めます。今回は `chatGPTLineChatBotRestApi` と命名しました。
 
 ```
-
 ? Provide a friendly name for your resource to be used as a label for this category in the project: › chatGPTLineChatBotRestApi
-
 ```
 
 API のパスを指定します。 今回は `/v1/line/bot/message/reply` と指定しました。
 
 ```
-
 ? Provide a path (e.g., /book/{isbn}): › /v1/line/bot/message/reply
-
 ```
 
 Lambda Function 名を決めます。今回は `chatGPTLineChatBotFunction` と命名しました。
 
 ```
-
 Only one option for [Choose a Lambda source]. Selecting [Create a new Lambda function].
 ? Provide an AWS Lambda function name: chatGPTLineChatBotFunction
-
 ```
 
 次に言語を選択します。
@@ -793,14 +782,12 @@ Only one option for [Choose a Lambda source]. Selecting [Create a new Lambda fun
 Python を選択します。
 
 ```
-
 ? Choose the runtime that you want to use:
 .NET 6
 Go
 Java
 NodeJS
 ❯ Python
-
 ```
 
 詳細設定追加の有無を選択します。
@@ -810,7 +797,6 @@ Lambda Layers や Lambda の環境変数など作成できます。
 こちらは後から追加するので N を入力します。
 
 ```
-
 Available advanced settings:
 
 - Resource access permissions
@@ -820,7 +806,6 @@ Available advanced settings:
 - Secret values configuration
 
 ? Do you want to configure advanced settings? (y/N)
-
 ```
 
 以下 Y とするとエディタが開きます。
@@ -828,9 +813,7 @@ Available advanced settings:
 Lambda のコードは後から修正するので N を入力します。
 
 ```
-
 ? Do you want to edit the local lambda function now? N
-
 ```
 
 API のアクセス制限、また追加の API Path 指定を問われますが、今回は両方 N を入力します。
@@ -840,16 +823,13 @@ API のアクセス制限、また追加の API Path 指定を問われますが
 詳しくは [LINE サーバー以外からのリクエストを弾く](#LINE-サーバー以外からのリクエストを弾く) を参照ください。
 
 ```
-
 ✔ Restrict API access? (Y/n) · no
 ✔ Do you want to add another path? (y/N) · no
-
 ```
 
 Lambda Function が作成されます。
 
 ```
-
 ? Press enter to continue
 Successfully added resource lineChatGPTBotDemoFunction locally.
 
@@ -861,7 +841,6 @@ To access AWS resources outside of this Amplify app, edit the /Users/kazuma/Docu
 "amplify push" builds all of your local backend resources and provisions them in the cloud
 "amplify publish" builds all of your local backend and front-end resources (if you added hosting category) and provisions them in the cloud
 ✅ Succesfully added the Lambda function locally
-
 ```
 
 ## DynamoDB 用の Amplify API カテゴリを追加する
@@ -879,32 +858,26 @@ DynamoDB を作成して Amplify で管理をする為、GraphQL(内部的には
 プロジェクトルートで以下のコマンドを実行して Amplify API カテゴリを追加します。
 
 ```
-
 amplify add api
-
 ```
 
 GraphQL を選択します。
 
 ```
-
 $ amplify add api
 ? Select from one of the below mentioned services: (Use arrow keys)
 ❯ GraphQL
   REST
-
 ```
 
 API 名を変更するので、Name を選択して Enter を押下します。
 
 ```
-
 ? Here is the GraphQL API that we will create. Select a setting to edit or continue
 ❯ Name: chatgptlinechatbot
   Authorization modes: API key (default, expiration time: 7 days from now)
   Conflict detection (required for DataStore): Disabled
   Continue
-
 ```
 
 `chatGPTLineChatBotGraphQLApi` という API 名 を入力します。
@@ -988,9 +961,7 @@ GraphQL transformer version: 2
 AWS のクラウドに API カテゴリをプロビジョニングする為以下コマンドを実行します。
 
 ```
-
 amplify push -y
-
 ```
 
 コマンドを実行した所、開発環境に `pipenv` と `virtualenv` が無いので以下のエラーが発生しました。
@@ -1008,10 +979,8 @@ You must have virtualenv installed and available on your PATH as "venv". It can 
 ここは適宜環境に合わせてインストールしてください。
 
 ```
-
 brew install pipenv
 brew install virtualenv
-
 ```
 
 改めて、 `amplify push -y` コマンドを実行します。
@@ -1019,7 +988,6 @@ brew install virtualenv
 成功すると以下 GraphQL と REST API のエンドポイントが表示されます。
 
 ```
-
 $ amplify status
 
     Current Environment: dev
@@ -1040,16 +1008,13 @@ GraphQL API KEY: XXXXXXXXXXXXXXXXXXXXXXXX
 GraphQL transformer version: 2
 REST API endpoint: https://XXXXXXXXXXX.execute-api.ap-northeast-1.amazonaws.com/dev
 
-
 ```
 
 REST API を実行しデフォルトのメッセージが表示される事を確認します。
 
 ```
-
 $ curl https://XXXXXXXX.execute-api.ap-northeast-1.amazonaws.com/dev/v1/line/bot/message/reply
 "Hello from your new Amplify Python lambda!"
-
 ```
 
 # LINE 各種トークン・OpenAI API キーを取得する
@@ -1095,9 +1060,7 @@ Messaging API 設定タブの画面にあるチャネルアクセストークン
 以下のようなアクセストークンが発行されるので控えておきます。
 
 ```
-
 6/hBGi07nF5TPxiYasi5/XXXXXXXXXXXXXXXXXXXXX/fTatrGm8BCQSP9KAn4Reyd6mK7yGC8MkOlk32c5l0KSbn44aLPYoF11v01wRu4E+E8+ofqCIdlk3H3L/XXXXXXXXXXXXXXXXXX/1O/w1cDnyilFU=
-
 ```
 
 次に Webhook を設定します。
@@ -1150,7 +1113,7 @@ Messaging API 設定タブにある、LINE 公式アカウント機能 > 応答�
 
 具体的には Amplify CLI から AWS Systems Manager Parameter Store にシークレットを保存、環境変数にキーを保存し Lambda 関数内から AWS SDK 経由にシークレットを取得できます。
 
-## LINE 各種トークン、OpenAI API キーをシークレットを設定する
+## LINE 各種トークン、OpenAI API キーのシークレットを設定する
 
 以下コマンドを実行します。
 
@@ -1233,7 +1196,9 @@ API キー名を入力します。
 ? Enter the value for OPEN_AI_API_KEY: [hidden]
 ```
 
-3 種類のキーの登録が終わったら作業を終了するので、 `I'm done` を選択、次の設問は Y を入力します。
+3 種類のキーの登録が終わったら作業を終了するので、 `I'm done` を選択します。
+
+次の設問は Y を入力し、最後に Lambda のコードを編集するか聞かれるので N 入力します。
 
 ```
 ? What do you want to do? (Use arrow keys)
@@ -1256,9 +1221,7 @@ AWS コンソールを開いて、AWS Systems Manager > アプリケーション
 以下のキー名の prefix (パス部分)を後から環境変数に登録するので控えておきます。
 
 ```
-
 /amplify/{AppID}/dev/AMPLIFY_chatGPTLineChatBotFunction_{KeyName}
-
 ```
 
 ## シークレットのキー名 prefix と DynamoDB のテーブル名 postfix を Lambda の環境変数に設定する
@@ -1284,38 +1247,30 @@ Lambda から環境変数に登録されたシークレットの prefix のキ�
 以下コマンドを実行します。
 
 ```
-
 amplify update function
-
 ```
 
 シークレットを設定する Lambda 関数を指定します。
 
 ```
-
 ? Select the Lambda function you want to update chatGPTLineChatBotFunction
-
 ```
 
 `Environment variables configuration` を選択します。
 
 ```
-
 ? Which setting do you want to update?
 Resource access permissions
 Scheduled recurring invocation
 Lambda layers configuration
 ❯ Environment variables configuration
 Secret values configuration
-
 ```
 
 環境変数に登録するキー名を入力します。今回は `BASE_SECRET_PATH` と命名しました。
 
 ```
-
 ? Enter the environment variable name: BASE_SECRET_PATH
-
 ```
 
 キーの値を入力します。
