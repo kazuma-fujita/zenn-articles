@@ -453,7 +453,13 @@ Lex では、スロットに値を入れる必要があります。
 
 今回スロットタイプ名は `empty` とします。
 
-`追加` ボタンを押下して作成完了です。
+`追加` ボタンを押下します。
+
+スロットタイプ値も `empty` を入力します。
+
+`価値を追加` ボタンを押下します。
+
+`スロットタイプを保存` ボタンを押下します。
 
 ![](https://storage.googleapis.com/zenn-user-upload/07ad4ccd9b6a-20230331.png)
 
@@ -506,7 +512,7 @@ Amazon Lex がユーザーの発話からインテントを正確に識別する
 
 ![](https://storage.googleapis.com/zenn-user-upload/8063c7a12a39-20230401.png)
 
-インテント名と説明を入力します。
+インテント名に `ChatGPT` と説明を入力します。
 
 `サンプル発話` には `質問` と入力します。
 
@@ -541,6 +547,7 @@ Amazon Lex がユーザーの発話からインテントを正確に識別する
 # Amazon Connect を構築する
 
 ![](https://storage.googleapis.com/zenn-user-upload/b8f3c15ef828-20230331.png)
+
 Amazon Connect のコンソールから `Create Instance` ボタン押下します。
 
 ID 管理は `Amazon Connect にユーザーを保存` を選択します。
@@ -675,3 +682,7 @@ Amazon Connect の CCP（コンタクトコントロールパネル）で通話�
 `保存` ボタンを押下します。
 
 ![](https://storage.googleapis.com/zenn-user-upload/d4da34462c81-20230402.png)
+
+# 参考
+
+https://dev.classmethod.jp/articles/amazon-connect-chatgpt-api-chatbot/
