@@ -1,5 +1,5 @@
 ---
-title: "電話でChatGPTと会話できる電話GPTのようなボイスボットを作る"
+title: "電話でChatGPTと文脈を読んだ会話ができるボイスボットを作る"
 emoji: "🤖"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
@@ -23,21 +23,477 @@ https://www.youtube.com/watch?v=9MfSCqrXCTM
 
 以下成果物となります。
 
-# 前提
+動画は Amazon Connect の Contact Control Panel (以後 CCP) のソフトフォンを使って電話をかけています。
+
+ソフトフォンに表示されている番号は実際に電話をかける事ができ、通話料がかかります。(動画内の番号は削除している為かける事はできません)
+
+会話の履歴は DynamoDB に保存し、会話の履歴を含めたプロンプトを ChatGPT に投げて文脈を読んだ回答をするようにしています。
+
+# Lex 用語解説
+
+音声認識、文字起こしに関しては Amazon Connect (内部的には Amazon Transcribe) で行っています。
+
+Amazon Lex で文字起こしされた文章を認識し Lambda をキック、Lambda から文字起こし文をプロンプトとして ChatGPT API に投げています。
+
+ChatGPT で推論した回答は Amazon Connect (内部的には Amazon Polly)を使用して音声として応答しています。
+
+Lex ではインテントとサンプル発話、スロット、フルフィルメントを設定します。
+
+ボット作成で必要な要素となりますので、以下それぞれ用語の解説をします。
+
+## スロット
+
+スロットとは、事前定義されたスロットタイプ（日付、数値、都市名など）と独自で作成できるカスタムスロットタイプからユーザーからの入力を正確に解釈し、適切な形式に変換します。
+
+例えばピザの注文ボットで、ピザのサイズ Small, Medium, Large のカスタムスロットを作成したとします。
+
+ユーザーから入力される「サイズは Small でお願いします」等自然言語からサイズは Small であると解釈し、サイズスロットを Small で埋めます。
+
+ピザのサイズスロットが埋まったら次はピザのトッピングスロットを埋めて・・・を繰り返しピザの注文内容を揃えていく訳です。
+
+## インテント、サンプル発話、フルフィルメント
+
+インテントは、ユーザーが提供する情報（発話）を解析し、対応する目的を特定します。
+
+サンプル発話とはユーザーがインテントをトリガーする可能性のある自然言語のフレーズやパターンのことです。
+
+Amazon Lex がユーザーの発話からインテントを正確に識別するために使用されます。
+
+例えば、「OrderPizza」インテントのサンプル発話には、「ピザを注文したい」や「大きなペパロニピザを一つください」など注文する時に含まれる可能性のあるフレーズを設定します。
+
+インテントは必要に応じてユーザーから追加情報（スロット）を取得します。
+
+ピザ注文の例だとピザのサイズスロットやトッピングスロットですね。
+
+フルフィルメント（実行）とは情報を使用して目的に応じたアクション（たとえば、データベースから情報を取得）を実行します。
+
+フルフィルメントは Lambda 関数内で設定します。
+
+インテントの要素をまとめると以下のようになります。
+
+| 主要な要素               | 説明                                                                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| インテント名             | インテントを一意に識別する名前。例:「OrderPizza」、「BookFlight」など。                                                                                                    |
+| サンプル発話             | トリガーされる可能性の自然言語フレーズ。Amazon Lex がユーザーの発話からインテントを識別するために使用される。例:「ピザを注文したい」、「大きなペパロニピザを一つください」 |
+| スロット                 | インテント実行に必要な特定の情報を収集するパラメータ。例:「OrderPizza」インテントでは、サイズ、トッピング、配達先住所など。                                                |
+| フルフィルメント（実行） | インテント識別後、必要なスロットが埋まった時に実行されるアクション。AWS Lambda 関数や Amazon Connect のコンタクトフロー設定でアクションを実行する。                        |
+
+例えば、ユーザーが「今日の東京の天気は？？」と尋ねた場合、インテントは「天気情報を取得する」と特定されます。
+
+そして場所や日付のスロットが埋まり次第、対応するアクション（天気情報を提供するウェブサービスへのクエリ）が実行され、ユーザーに応答が返されます。
+
+以下インテントの例です。
+
+| インテント名    | サンプル発話                 | スロット         | フルフィルメント                                       |
+| --------------- | ---------------------------- | ---------------- | ------------------------------------------------------ |
+| CheckWeather    | 明日のニューヨークの天気は？ | location, date   | 天気情報 API にアクセス、結果をユーザーへ返す          |
+| BookAppointment | 月曜に歯医者の予約をしたい   | day, serviceType | 予約システムへ登録、確認メッセージをユーザーへ返す     |
+| OrderPizza      | 大きいピザを 2 枚頼みたい    | size, quantity   | 注文システムへ登録、注文確認メッセージをユーザーへ返す |
+
+# 実装
+
+前準備の Amazon Connect、Amplify などバックエンド環境の構築が長くなってしまったので、先に実装コードです。
+
+## ディレクトリ構成
+
+Lambda Function の ディレクトリ構成は以下となります。
+
+```
+amplify/backend/function/chatGPTVoiceBotFunction
+├── Pipfile
+├── Pipfile.lock
+├── amplify.state
+├── chatGPTVoiceBotFunction-cloudformation-template.json
+├── custom-policies.json
+├── function-parameters.json
+└── src
+    ├── aws_systems_manager.py
+    ├── chatgpt_api.py
+    ├── const.py
+    ├── db_accessor.py
+    ├── event.json
+    ├── index.py
+    ├── message_repository.py
+    └── setup.py
+```
+
+## OpenAI Completions API 実装
+
+OpenAI の Completions API を実行するコードです。
+
+ボイスボットはユーザーを離脱させない為、とにかく回答速度が重要になり、[こちら](https://dev.classmethod.jp/articles/chatgpt-api-lambda-reduced-response-time/)を参考にしています。
+
+ChatGPT モデルは GPT-3.5 turbo を使用します。
+
+GPT-4 でも試したのですが、どうしてもレスポンスが遅いです。
+
+また、system プロンプトには 250 文字以内で回答するよう指示しています。
+
+max_tokens で縛ると回答が途中で切れてしまうのでプロンプトで指示しています。
+
+この指定を入れないとあまり要約されない推論を返してしまうので回答速度が遅くなってしまいます。
+
+content は英語の方が精度が高いので英語で設定しています。
+
+```py:chatgpt_api.py
+import openai
+import const
+
+# Model name
+GPT_MODEL = 'gpt-3.5-turbo'
+
+# Maximum number of tokens to generate
+# MAX_TOKENS = 1024
+
+# Create a new dict list of a system
+SYSTEM_PROMPTS = [{'role': 'system', 'content': 'You are an excellent AI assistant. Please keep your answer within 250 characters.'}]
+
+
+def completions(history_prompts):
+    messages = SYSTEM_PROMPTS + history_prompts
+
+    print(f"prompts:{messages}")
+    try:
+        openai.api_key = const.OPEN_AI_API_KEY
+        response = openai.ChatCompletion.create(
+            model=GPT_MODEL,
+            messages=messages,
+            # max_tokens=MAX_TOKENS
+        )
+        return response['choices'][0]['message']['content']
+    except Exception as e:
+        # Raise the exception
+        raise e
+```
+
+その他細かい Completions API のパラメーターについては OpenAI の [こちら](https://platform.openai.com/docs/api-reference/completions/create) を参照ください。
+
+## DynamoDB 実装
+
+DynamoDB へのアクセスは boto3 を利用します。
+
+会話履歴を登録する PUT 関数、会話履歴を取得する QUERY 関数を作成しています。
+
+```py:db_accessor.py
+import boto3
+from datetime import datetime
+import const
+
+TABLE_NAME = f'VoiceMessages{const.DB_TABLE_NAME_POSTFIX}'
+QUERY_INDEX_NAME = 'bySessionId'
+
+dynamodb = boto3.client('dynamodb')
+
+
+def query_by_session_id(session_id: str, limit: int) -> list:
+    # Create a dictionary of query parameters
+    query_params = {
+        'TableName': TABLE_NAME,
+        'IndexName': QUERY_INDEX_NAME,
+        # Use a named parameter for the key condition expression
+        'KeyConditionExpression': '#sessionId = :sessionId',
+        # Define an expression attribute name for the hash key
+        'ExpressionAttributeNames': {
+            '#sessionId': 'sessionId'
+        },
+        # Define an expression attribute value for the hash key
+        'ExpressionAttributeValues': {
+            ':sessionId': {'S': session_id}
+        },
+        # Sort the results in descending order by sort key
+        'ScanIndexForward': False,
+        # Limit the number of results
+        'Limit': limit
+    }
+
+    try:
+        # Call the query method of the DynamoDB client with the query parameters
+        query_result = dynamodb.query(**query_params)
+        # Return the list of items from the query result
+        return query_result['Items']
+    except Exception as e:
+        # Raise any exception that occurs during the query operation
+        raise e
+
+
+def put_message(partition_key: str, uid: str, role: str, content: str, now: datetime) -> None:
+    # Create a dictionary of options for put_item
+    options = {
+        'TableName': TABLE_NAME,
+        'Item': {
+            'id': {'S': partition_key},
+            'sessionId': {'S': uid},
+            'role': {'S': role},
+            'content': {'S': content},
+            'createdAt': {'S': now.isoformat()},
+        },
+    }
+    # Try to put the item into the table using dynamodb client
+    try:
+        dynamodb.put_item(**options)
+
+    # If an exception occurs, re-raise it
+    except Exception as e:
+        raise e
+```
+
+## 会話データ取得・登録・ChatGPT 推論実装
+
+会話履歴テーブルからデータの取得、登録、ChatGPT API の推論実行〜推論結果取得をする関数です。
+
+QUERY_LIMIT 定数の値は ChatGPT API の入力プロンプトに含める会話履歴数です。
+
+この値を大きくするとより多くの user と assistant の会話履歴を入力プロンプトに含める事ができます。
+
+QUERY_LIMIT を大きくしすぎるとトークン長が長くなりすぎエラーとなるので注意が必要です。
+
+```py:message_repository.py
+import uuid
+from datetime import datetime
+
+import chatgpt_api
+import db_accessor
+
+QUERY_LIMIT = 10
+
+
+def _fetch_chat_histories_by_session_id(session_id, prompt_text):
+    try:
+        if session_id is None:
+            raise Exception('To query an element is none.')
+
+        # Query messages by Line user ID.
+        db_results = db_accessor.query_by_session_id(session_id, QUERY_LIMIT)
+
+        # Reverse messages
+        reserved_results = list(reversed(db_results))
+
+        # Create new dict list of a prompt
+        chat_histories = list(map(lambda item: {"role": item["role"]["S"], "content": item["content"]["S"]}, reserved_results))
+        # Create the list of a current user prompt
+        current_prompts = [{"role": "user", "content": prompt_text}]
+
+        # Join the lists
+        return chat_histories + current_prompts
+
+    except Exception as e:
+        # Raise the exception
+        raise e
+
+
+def _insert_message(session_id, role, prompt_text):
+    try:
+        if prompt_text is None or role is None or session_id is None:
+            raise Exception('To insert elements are none.')
+
+        # Create a partition key
+        partition_key = str(uuid.uuid4())
+
+        # Put a record of the user into the Messages table.
+        db_accessor.put_message(partition_key, session_id, role, prompt_text, datetime.now())
+
+    except Exception as e:
+        # Raise the exception
+        raise e
+
+
+def create_completed_text(session_id, prompt_text):
+    # Query messages by Line user ID.
+    chat_histories = _fetch_chat_histories_by_session_id(session_id, prompt_text)
+
+    # Call the GPT3 API to get the completed text
+    completed_text = chatgpt_api.completions(chat_histories)
+
+    # Put a record of the user into the Messages table.
+    _insert_message(session_id, 'user', prompt_text)
+
+    # Put a record of the assistant into the Messages table.
+    _insert_message(session_id, 'assistant', completed_text)
+
+    return completed_text
+```
+
+このトークン数の調整はトークン長カウンター、tokeniser である [tiktoken](https://github.com/openai/tiktoken) を使えば出来そうです。
+
+今回はこのトークン長オーバーのエラーハンドリングは省いていますが、この処理も別で記事にしたいと思います。
+
+## LINE トークン ・ OpenAI API キーをシークレットから取得する
+
+LINE のチャネルトークンやシークレットトークン、OpenAI の API キーなど秘匿情報は AWS Systems Manager Parameter Store に登録して隠蔽します。
+
+AWS Systems Manager のシークレットの登録方法は後述しますので、シークレットの値を取得するコードを先に出します。
+
+boto3 で簡単に AWS System Manager から値を取得することが可能です。
+
+```py:aws_systems_manager.py
+import boto3
+from botocore.exceptions import ClientError
+
+# AWS region name
+AWS_REGION = "ap-northeast-1"
+
+
+def get_secret(secret_key):
+    try:
+        # Create a client for AWS Systems Manager
+        ssm = boto3.client('ssm', region_name=AWS_REGION)
+
+        # Get the secret from AWS SSM
+        response = ssm.get_parameter(
+            Name=secret_key,
+            WithDecryption=True
+        )
+
+        # Return the value of the secret
+        return response['Parameter']['Value']
+    except ClientError as e:
+        raise e
+```
+
+実装したモジュールを利用して、以下のように定数として取得出来るようにします。
+
+```py:const.py
+import os
+import aws_systems_manager
+
+BASE_SECRET_PATH = os.environ.get('BASE_SECRET_PATH')
+DB_TABLE_NAME_POSTFIX = os.environ.get('DB_TABLE_NAME_POSTFIX')
+OPEN_AI_API_KEY = aws_systems_manager.get_secret(f'{BASE_SECRET_PATH}OPEN_AI_API_KEY')
+```
+
+## Lambda の index.py 実装
+
+最後に Lambda から最初に呼び出される index.py を実装します。
+
+コードは [こちら](https://dev.classmethod.jp/articles/amazon-connect-chatgpt-api-chatbot/#toc-2) をベースにしています。
+
+以下変数、関数の簡単な説明です。
+
+| 項目           | 説明                                                                         |
+| -------------- | ---------------------------------------------------------------------------- |
+| SLOT_DUMMY     | Lex で必要なスロットにダミー値を入れる変数。質問内容は何でも聞けるように設定 |
+| elicit_slot    | Lex がスロットが埋まっていない場合に使用                                     |
+| confirm_intent | スロットが全て埋まった時に使用                                               |
+| close          | インテント終了時に使用。クローズ時のプロンプトは、「終了」                   |
+| chatGPT_intent | API からのレスポンスで、ChatGPT の返答をテキスト形式で取得するために使用     |
+
+INTENT_NAME は後ほど解説するインテント作成で自分で設定したインテント名を指定します。
+
+SLOT_NAME は後ほど解説するインテントに設定するスロット作成の時に自分で設定したスロット名を指定します。
+
+```py:index.py
+import message_repository
+
+
+INTENT_NAME = 'ChatGPT'
+
+SLOT_NAME = 'empty_slot'
+
+SLOT_DUMMY = {
+    SLOT_NAME: {
+        'shape': 'Scalar',
+        'value': {
+            'originalValue': 'dummy',
+            'resolvedValues': ['dummy'],
+            'interpretedValue': 'dummy'
+        }
+    }
+}
+
+
+def elicit_slot(slot_to_elicit, intent_name, slots):
+    return {
+        'sessionState': {
+            'dialogAction': {
+                'type': 'ElicitSlot',
+                'slotToElicit': slot_to_elicit,
+            },
+            'intent': {
+                'name': intent_name,
+                'slots': slots,
+                'state': 'InProgress'
+            }
+        }
+    }
+
+
+def confirm_intent(message_content, intent_name, slots):
+    return {
+        'messages': [{'contentType': 'PlainText', 'content': message_content}],
+        'sessionState': {
+            'dialogAction': {
+                'type': 'ConfirmIntent',
+            },
+            'intent': {
+                'name': intent_name,
+                'slots': slots,
+                'state': 'Fulfilled'
+            }
+        }
+    }
+
+
+def close(fulfillment_state, message_content, intent_name, slots):
+    return {
+        'messages': [{'contentType': 'PlainText', 'content': message_content}],
+        'sessionState': {
+            'dialogAction': {
+                'type': 'Close',
+            },
+            'intent': {
+                'name': intent_name,
+                'slots': slots,
+                'state': fulfillment_state
+            }
+        }
+    }
+
+
+def chatGPT_intent(event):
+    intent_name = event['sessionState']['intent']['name']
+    slots = event['sessionState']['intent']['slots']
+    input_text = event['inputTranscript']
+    session_id = event['sessionId']
+
+    if slots[SLOT_NAME] is None:
+        return elicit_slot(SLOT_NAME, intent_name, SLOT_DUMMY)
+
+    elif input_text == '終了':
+        return close('Fulfilled', 'ご利用ありがとうございました。またのご利用お待ちしております。', intent_name, slots)
+
+    completed_text = message_repository.create_completed_text(session_id, input_text)
+    print(f'Received input_text:{input_text}')
+    print(f'Received completed_text:{completed_text}')
+
+    return confirm_intent(completed_text, intent_name, slots)
+
+
+def handler(event, context):
+    intent_name = event['sessionState']['intent']['name']
+
+    if intent_name == INTENT_NAME:
+        return chatGPT_intent(event)
+```
+
+次から実装前準備の手順となるので、まずは以降手順の完了後コードを実装してください。
+
+# バックエンド環境構築
 
 ChatGPT API を実行する Lambda は AWS Amplify で構築します。
 
 今回は前回の記事で作成した Amplify 環境をベースにします。
 
-バックエンド環境構築は以下記事の[Amplify CLI でリソースを作成する](https://zenn.dev/zuma_lab/articles/gpt-4-line-chatbot#amplify-cli-%E3%81%A7%E3%83%AA%E3%82%BD%E3%83%BC%E3%82%B9%E3%82%92%E4%BD%9C%E6%88%90%E3%81%99%E3%82%8B)以降を参照ください。
+まずは以下記事の[Amplify CLI でリソースを作成する](https://zenn.dev/zuma_lab/articles/gpt-4-line-chatbot#amplify-cli-%E3%81%A7%E3%83%AA%E3%82%BD%E3%83%BC%E3%82%B9%E3%82%92%E4%BD%9C%E6%88%90%E3%81%99%E3%82%8B)以降を参照して環境構築をお願いします。
 
 https://zenn.dev/zuma_lab/articles/gpt-4-line-chatbot#amplify-cli-%E3%81%A7%E3%83%AA%E3%82%BD%E3%83%BC%E3%82%B9%E3%82%92%E4%BD%9C%E6%88%90%E3%81%99%E3%82%8B
 
-Amplify の環境構築、REST API から DynamoDB の作成方法、 LINE 設定、OpenAI の API キー取得方法を解説しています。
+記事では Amplify の環境構築、REST API から DynamoDB の作成方法、 LINE 設定、OpenAI の API キー取得方法を解説しています。
 
-あとは新たにボイスチャット用の Lambda 関数と DynamoDB に会話履歴保存テーブルを作成して ChatGPT と会話が出来るように実装します。
+環境を作ったらそこに新たにボイスチャット用の Lambda 関数と DynamoDB に会話履歴保存テーブルを作成して ChatGPT と会話が出来るように実装します。
 
 # Lambda を作成する
+
+以下ベースの環境を作ったプロジェクトのルートディレクトリで作業します。
 
 ボイスチャット用の Lambda を作成する為にプロジェクトルートで以下コマンドを実行します。
 
@@ -158,8 +614,6 @@ Amplify で作成する Lambda の Timeout 値はデフォルトで 25 秒です
 
 ユーザーの入力プロンプトの内容や ChatGPT のアクセス状況次第ですが、ChatGPT API のレスポンスが 1 分を超える事があります。
 
-時には 2〜3 分経ってレスポンスが返って来ることがあります。
-
 Timeout 値が 25 秒だとタイムアウトエラーになって処理しきれない場合があるので以下 cloudformation-template.json を編集します。
 
 ```
@@ -170,12 +624,12 @@ vi amplify/backend/function/chatGPTVoiceBotFunction/chatGPTVoiceBotFunction-clou
 
 Lambda に設定出来る最大の Timeout 値は 900 秒（15 分）です。
 
-筆者の場合、300 秒(5 分) に設定しています。
+筆者の場合、60 秒(1 分) に設定しています。
 
 ```json
         "Runtime": "python3.8",
         "Layers": [],
-        "Timeout": 25 -> 300
+        "Timeout": 25 -> 60
 ```
 
 # 会話履歴テーブルを DynamoDB に追加する
@@ -435,14 +889,6 @@ Lambda 関数 - オプションのソースに先程作成した Lambda 関数�
 
 Lex では、スロットに値を入れる必要があります。
 
-スロットとは、事前定義されたスロットタイプ（日付、数値、都市名など）と独自で作成できるカスタムスロットタイプからユーザーからの入力を正確に解釈し、適切な形式に変換します。
-
-例えばピザの注文ボットで、ピザのサイズ Small, Medium, Large のカスタムスロットを作成したとします。
-
-ユーザーから入力される「サイズは Small でお願いします」等自然言語からサイズは Small であると解釈し、サイズスロットを Small で埋めます。
-
-ピザのサイズスロットが埋まったら次はピザのトッピングスロットを埋めて・・・を繰り返しピザの注文内容を揃えていく訳です。
-
 今回は質問をする内容を何でも聞けるようにするために、ダミーの値を埋める空のスロットを作成します。
 
 左カラムの ChatGPTBot > ドラフトバージョン > 全ての言語 > 日本語 > スロットタイプからスロットタイプ一覧画面を表示します。
@@ -464,45 +910,6 @@ Lex では、スロットに値を入れる必要があります。
 ![](https://storage.googleapis.com/zenn-user-upload/07ad4ccd9b6a-20230331.png)
 
 # インテントを作成する
-
-インテントとサンプル発話、カスタムスロットを設定します。
-
-インテントは、ユーザーが提供する情報（発話）を解析し、対応する目的を特定します。
-
-サンプル発話とはユーザーがインテントをトリガーする可能性のある自然言語のフレーズやパターンのことです。
-
-Amazon Lex がユーザーの発話からインテントを正確に識別するために使用されます。
-
-例えば、「OrderPizza」インテントのサンプル発話には、「ピザを注文したい」や「大きなペパロニピザを一つください」など注文する時に含まれる可能性のあるフレーズを設定します。
-
-インテントは必要に応じてユーザーから追加情報（スロット）を取得します。
-
-ピザ注文の例だとピザのサイズスロットやトッピングスロットですね。
-
-フルフィルメント（実行）とは情報を使用して目的に応じたアクション（たとえば、データベースから情報を取得）を実行します。
-
-フルフィルメントは Lambda 関数内で設定します。
-
-インテントの要素をまとめると以下のようになります。
-
-| 主要な要素               | 説明                                                                                                                                                                       |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| インテント名             | インテントを一意に識別する名前。例:「OrderPizza」、「BookFlight」など。                                                                                                    |
-| サンプル発話             | トリガーされる可能性の自然言語フレーズ。Amazon Lex がユーザーの発話からインテントを識別するために使用される。例:「ピザを注文したい」、「大きなペパロニピザを一つください」 |
-| スロット                 | インテント実行に必要な特定の情報を収集するパラメータ。例:「OrderPizza」インテントでは、サイズ、トッピング、配達先住所など。                                                |
-| フルフィルメント（実行） | インテント識別後、必要なスロットが埋まった時に実行されるアクション。AWS Lambda 関数や Amazon Connect のコンタクトフロー設定でアクションを実行する。                        |
-
-例えば、ユーザーが「今日の東京の天気は？？」と尋ねた場合、インテントは「天気情報を取得する」と特定されます。
-
-そして場所や日付のスロットが埋まり次第、対応するアクション（天気情報を提供するウェブサービスへのクエリ）が実行され、ユーザーに応答が返されます。
-
-以下インテントの例です。
-
-| インテント名    | サンプル発話                 | スロット         | フルフィルメント                                       |
-| --------------- | ---------------------------- | ---------------- | ------------------------------------------------------ |
-| CheckWeather    | 明日のニューヨークの天気は？ | location, date   | 天気情報 API にアクセス、結果をユーザーへ返す          |
-| BookAppointment | 月曜に歯医者の予約をしたい   | day, serviceType | 予約システムへ登録、確認メッセージをユーザーへ返す     |
-| OrderPizza      | 大きいピザを 2 枚頼みたい    | size, quantity   | 注文システムへ登録、注文確認メッセージをユーザーへ返す |
 
 それでは、インテントを作成するのですが、既にボット作成時にデフォルトで NewIntent が作成されているのでそれを編集します。
 
@@ -608,6 +1015,8 @@ Amazon Lex のリージョンが `アジア・パシフィック:東京` とな�
 
 ![](https://storage.googleapis.com/zenn-user-upload/e5d58d9c473a-20230331.png)
 
+この作業は忘れがちなので必ず設定してください。
+
 # コンタクトフローを作成する
 
 `https://{instance-alias}.my.connect.aws/home` にアクセスし Amazon Connect CCP を開きます。
@@ -618,7 +1027,29 @@ Amazon Lex のリージョンが `アジア・パシフィック:東京` とな�
 
 今回は ChatGPT と命名しました。
 
-次に `音声の設定` ブロックを選択しコンタクトフローに配置、エントリと結合します。
+以下コンタクトフローの完成図です。
+
+![](https://storage.googleapis.com/zenn-user-upload/44624442db73-20230406.png)
+
+以下それぞれの設定値です。
+
+`音声の設定` ブロックは言語を日本語、音声はお好みで良いのですが今回はニューラル発話の Kazuha を選択しました。
+
+必ず `言語属性を設定` にチェックを入れてください。
+
+![](https://storage.googleapis.com/zenn-user-upload/c8e55205b77e-20230406.png =400x)
+
+`顧客の入力を取得する` ブロックは `テキスト読み上げまたはチャットテキスト` > `手動で設定` に 読み上げるテキストを入力してください。
+
+![](https://storage.googleapis.com/zenn-user-upload/6c619dd5dd2c-20230406.png =400x)
+
+次に `Amazon Lex` タブを選択し、 `Lexボットを選択` に先程 Lex コンソールで作成した ChatGPTBot と TestBotAlias を選択します。
+
+インテントには Lex コンソールで作成したインテント名 `ChatGPT` を手動で入力します。
+
+![](https://storage.googleapis.com/zenn-user-upload/80003bae1456-20230406.png =400x)
+
+コンタクトフローを作成、編集をしたら必ず画面右上の `保存` 次に `公開` ボタンを押下してください。
 
 # 電話番号を取得する
 
@@ -657,6 +1088,10 @@ Amazon Connect の料金形態は複雑な為、[こちら](https://blog.usize-t
 `保存`　ボタンを押下します。
 
 ![](https://storage.googleapis.com/zenn-user-upload/c609c94b99ee-20230402.png)
+
+これで ChatGPT のボイスボットの完成です。
+
+取得した電話番号に電話をかけると ChatGPT ボイスボットと会話する事ができます。
 
 # Amazon Connect CCP の発話エラー発生対処方法
 
