@@ -8,7 +8,7 @@ topics:
   - "AmazonConnect"
   - "AWS"
   - "Amplify"
-published: false
+published: true
 ---
 
 こんにちわ。 [ZUMA](https://twitter.com/zuma_lab) です。
@@ -23,19 +23,30 @@ https://www.youtube.com/watch?v=9MfSCqrXCTM
 
 以下成果物となります。
 
-動画は Amazon Connect の Contact Control Panel (以後 CCP) のソフトフォンを使って電話をかけています。
+https://youtu.be/QKHydY6pyXI
 
-ソフトフォンに表示されている番号は実際に電話をかける事ができ、通話料がかかります。(動画内の番号は削除している為かける事はできません)
+動画は Amazon Connect のソフトフォンを使って電話をかけています。
 
-会話の履歴は DynamoDB に保存し、会話の履歴を含めたプロンプトを ChatGPT に投げて文脈を読んだ回答をするようにしています。
+ソフトフォンに表示されている電話番号は Amazon Connect で取得しており、実際にスマートフォンなどから電話をかける事ができます。
+(動画内の電話番号は既に削除しています)
 
-# Lex 用語解説
+当初 ChatGPT の回答は GPT-4 API を使用していたのですが、どうしてもレスポンスが遅かったので動画では GPT-3.5 turbo を使用しています。
 
-音声認識、文字起こしに関しては Amazon Connect (内部的には Amazon Transcribe) で行っています。
+また、会話の履歴は DynamoDB に保存し、会話の履歴を含めたプロンプトを ChatGPT に投げて文脈を読んだ回答をするようにしています。
 
-Amazon Lex で文字起こしされた文章を認識し Lambda をキック、Lambda から文字起こし文をプロンプトとして ChatGPT API に投げています。
+動画の中では「お腹が痛いんだけど夜ご飯は何を食べたら良い？」という文脈に対して、「おすすめのメニューはある？」や「病院は何科に行けば良い？」と質問しています。
 
-ChatGPT で推論した回答は Amazon Connect (内部的には Amazon Polly)を使用して音声として応答しています。
+ChatGPT は「お腹が痛い場合は・・・」とちゃんと会話の履歴から文脈を読んだ回答をしてくれました。
+
+# Amazon Lex 用語解説
+
+Amazon Lex は自然言語処理（NLP）と音声認識を利用した会話型インターフェースの構築サービスです。
+
+音声認識、文字起こしに関しては Amazon Transcribe で行っています。
+
+Lex は文字起こしされた文章を認識し Lambda をキック、Lambda から文字起こし文をプロンプトとして ChatGPT API に投げています。
+
+ChatGPT で推論した回答は Amazon Polly を使用して音声として応答しています。
 
 Lex ではインテントとサンプル発話、スロット、フルフィルメントを設定します。
 
@@ -125,7 +136,7 @@ OpenAI の Completions API を実行するコードです。
 
 ChatGPT モデルは GPT-3.5 turbo を使用します。
 
-GPT-4 でも試したのですが、どうしてもレスポンスが遅いです。
+GPT-4 でも試したのですが、どうしてもレスポンスが遅かったです。
 
 また、system プロンプトには 250 文字以内で回答するよう指示しています。
 
@@ -489,7 +500,7 @@ https://zenn.dev/zuma_lab/articles/gpt-4-line-chatbot#amplify-cli-%E3%81%A7%E3%8
 
 記事では Amplify の環境構築、REST API から DynamoDB の作成方法、 LINE 設定、OpenAI の API キー取得方法を解説しています。
 
-環境を作ったらそこに新たにボイスチャット用の Lambda 関数と DynamoDB に会話履歴保存テーブルを作成して ChatGPT と会話が出来るように実装します。
+作った環境に新たにボイスチャット用の Lambda 関数と DynamoDB に会話履歴保存テーブルを追加して ChatGPT と会話が出来るように実装します。
 
 # Lambda を作成する
 
