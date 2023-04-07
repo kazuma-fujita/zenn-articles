@@ -563,7 +563,7 @@ Available advanced settings:
 
 Lambda のコードは後から修正するので N を入力します。
 
-# 外部ライブラリをインストールする
+## 外部ライブラリをインストールする
 
 今回使用する外部ライブラリをインストールします。
 
@@ -582,7 +582,7 @@ pipenv install boto3
 pipenv install openai
 ```
 
-# AWS Systems Manager と DynamoDB のアクセス権限を設定する
+## AWS Systems Manager と DynamoDB のアクセス権限を設定する
 
 AWS Systems Manager の パラメーターストアにアクセスできる権限や DynamoDB の権限が無いと API 実行時に以下エラーが発生します。
 
@@ -619,7 +619,7 @@ Lambda Function のルートディレクトリに `custom-policies.json` があ�
 ]
 ```
 
-# Lambda の Timeout 値を延長する
+## Lambda の Timeout 値を延長する
 
 Amplify で作成する Lambda の Timeout 値はデフォルトで 25 秒です。
 
@@ -836,7 +836,7 @@ Remove existing environment variables
 
 # Amazon Lex を設定する
 
-次に Amazon Lex でボットを作成し、インテントやスロットを設定します。
+次に Amazon Lex でボットを作成し、先程作成した Lambda との関連付け、インテントやスロットを設定します。
 
 ## Amazon Lex でボットを作成する
 
