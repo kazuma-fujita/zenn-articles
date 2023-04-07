@@ -834,7 +834,11 @@ Remove existing environment variables
 
 最後に `amplify push -y` を実行してクラウドに反映させてください。
 
-# Amazon Lex でボットを作成する
+# Amazon Lex を設定する
+
+次に Amazon Lex でボットを作成し、インテントやスロットを設定します。
+
+## Amazon Lex でボットを作成する
 
 Amazon Lex コンソールから `ボットを作成する` ボタン押下します。
 
@@ -872,7 +876,7 @@ IAM アクセス許可は初めてボットを作成する場合 `基本的な A
 
 `完了` ボタンを押下してボットを作成します。
 
-# Amazon Lex と Lambda を関連付ける
+## Amazon Lex と Lambda を関連付ける
 
 Amazon Lex コンソールから作成したボットを選択します。
 
@@ -896,7 +900,7 @@ Lambda 関数 - オプションのソースに先程作成した Lambda 関数�
 
 ![](https://storage.googleapis.com/zenn-user-upload/6b22513a207a-20230331.png)
 
-# カスタムスロットタイプを作成する
+## カスタムスロットタイプを作成する
 
 Lex では、スロットに値を入れる必要があります。
 
@@ -920,7 +924,7 @@ Lex では、スロットに値を入れる必要があります。
 
 ![](https://storage.googleapis.com/zenn-user-upload/07ad4ccd9b6a-20230331.png)
 
-# インテントを作成する
+## インテントを作成する
 
 それでは、インテントを作成するのですが、既にボット作成時にデフォルトで NewIntent が作成されているのでそれを編集します。
 
@@ -964,6 +968,10 @@ Lex では、スロットに値を入れる必要があります。
 
 # Amazon Connect を構築する
 
+最後に Amazon Connect の環境構築をします。
+
+## Amazon Connect インスタンスを作成する
+
 ![](https://storage.googleapis.com/zenn-user-upload/b8f3c15ef828-20230331.png)
 
 Amazon Connect のコンソールから `Create Instance` ボタン押下します。
@@ -1002,7 +1010,7 @@ Amazon Connect CCP ダッシュボードが表示されるので、言語設定�
 
 ![](https://storage.googleapis.com/zenn-user-upload/891748f2227d-20230331.png)
 
-# Lex と Lambda を Connect インスタンスに紐付ける
+## Lex と Lambda を Connect インスタンスに紐付ける
 
 Amazon Connect コンソールを表示し、作成したインスタンスを選択します。
 
@@ -1028,7 +1036,7 @@ Amazon Lex のリージョンが `アジア・パシフィック:東京` とな�
 
 この作業は忘れがちなので必ず設定してください。
 
-# コンタクトフローを作成する
+## コンタクトフローを作成する
 
 `https://{instance-alias}.my.connect.aws/home` にアクセスし Amazon Connect CCP を開きます。
 
@@ -1062,7 +1070,7 @@ Amazon Lex のリージョンが `アジア・パシフィック:東京` とな�
 
 コンタクトフローを作成、編集をしたら必ず画面右上の `保存` 次に `公開` ボタンを押下してください。
 
-# 電話番号を取得する
+## 電話番号を取得する
 
 左カラムの電話番号を選択して`電話番号の取得` ボタンを押下します。
 
@@ -1104,7 +1112,7 @@ Amazon Connect の料金形態は複雑な為、[こちら](https://blog.usize-t
 
 取得した電話番号に電話をかけると ChatGPT ボイスボットと会話する事ができます。
 
-# Amazon Connect CCP の発話エラー発生対処方法
+## Amazon Connect CCP の発話エラー発生対処方法
 
 Amazon Connect の CCP（コンタクトコントロールパネル）で通話を発信した際に以下エラーが発生した場合の対処方法です。
 
@@ -1113,11 +1121,11 @@ Amazon Connect の CCP（コンタクトコントロールパネル）で通話�
 通話を発信する前に、電話番号をこのキューに関連付ける必要があります。管理者にお問い合わせください。
 ```
 
-![](https://storage.googleapis.com/zenn-user-upload/0d824a76fb5f-20230402.png)
+![](https://storage.googleapis.com/zenn-user-upload/0d824a76fb5f-20230402.png =400x)
 
 構築した Amazon Connect CPP へサインインし、ルーティング → キュー画面を開きます。
 
-![](https://storage.googleapis.com/zenn-user-upload/9ad0a9f2699d-20230402.png)
+![](https://storage.googleapis.com/zenn-user-upload/9ad0a9f2699d-20230402.png =400x)
 
 使用しているキュー名を押下します。
 
