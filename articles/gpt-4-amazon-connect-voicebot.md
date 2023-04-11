@@ -504,7 +504,7 @@ https://zenn.dev/zuma_lab/articles/gpt-4-line-chatbot#amplify-cli-%E3%81%A7%E3%8
 
 # Lambda を作成する
 
-以下ベースの環境を作ったプロジェクトのルートディレクトリで作業します。
+ベースの環境を作ったプロジェクトのルートディレクトリで作業します。
 
 ボイスチャット用の Lambda を作成する為にプロジェクトルートで以下コマンドを実行します。
 
@@ -513,8 +513,6 @@ amplify add function
 ```
 
 Lambda function を選択します。
-
-`amplify push` を実行するとユーザーの入力プロンプトと ChatGPT の推論結果を保存する DynamoDB テーブルが作成されます。
 
 ```
 $ amplify add function
