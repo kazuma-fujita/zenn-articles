@@ -21,7 +21,7 @@ ChatGPT の回答を元に ChatGPT がユーザーの質問予測をするので
 
 以下成果物となります。
 
-https://youtu.be/rS7qfRgu4f0
+https://youtu.be/y2h8eMjuytA
 
 LINE の画面下部にユーザーが次にする質問予測をボタンで表示しています。
 
