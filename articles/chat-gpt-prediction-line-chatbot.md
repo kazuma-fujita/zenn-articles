@@ -1,5 +1,5 @@
 ---
-title: "ChatGPT で Bing Chat のようにユーザーの質問予測をする LINE ボットを作る"
+title: "ChatGPT で Bing Chat スタイルの質問提案をする LINE ボットを作る"
 emoji: "🤖"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
