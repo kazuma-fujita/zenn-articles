@@ -102,7 +102,7 @@ https://platform.openai.com/docs/api-reference/assistants/createAssistant
 
 次にAI Assistantクラスを作成します。
 
-役割として、音声を録音する、Whisperで録音された音声を文字起こしする、GPT-4 Turboで推論を実行する、TTSで文字から音声を生成して再生する、の4つの処理を行います。
+役割として、音声を録音する、Whisperで録音された音声を文字起こしする、Assistants APIでタスクを実行する、TTSで文字から音声を生成して再生する、の4つの処理を行います。
 
 全文はこちらです。
 
@@ -407,10 +407,9 @@ https://platform.openai.com/docs/api-reference/audio/createTranscription
 
 勝手な文字を生成されては困るケースもあると思うので `prompt` で無音時の調整や `temperature` で生成結果を固定化できたりするのか、また別の機会に試してみます。
 
-## GPT-4 Turboで推論を実行する
+## Assistants APIでタスクを実行する
 
-
-一番重要な部分、Assistants APIで推論を実行する関数です。
+一番重要な部分、Assistants APIでタスクを実行する関数です。
 
 https://platform.openai.com/docs/assistants/how-it-works
 
