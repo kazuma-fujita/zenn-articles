@@ -16,7 +16,9 @@ https://zenn.dev/zuma_lab/articles/whisper-gpt4-turbo-tts-assistant-api
 
 音声文字起こしにWhisper、推論実行にGPT-4 Turbo、文字から音声の生成にTTS、長期記憶保持にはAssistants APIを使っています。
 
-今回は前回の実装からAssistants APIのFunction Callingを追加して擬似的にレストラン予約ができる音声会話型ボットを作ってみました。
+今回は前回のAssistants APIの実装を拡張しFunction Callingを呼び出して擬似的にレストラン予約ができる音声会話型ボットを作ってみました。
+
+なので、今回はどのようにしてAssistants APIでFunction Callingを呼び出すのかにフォーカスしたいと思います。
 
 # 成果物
 
@@ -32,7 +34,9 @@ https://www.youtube.com/watch?v=paUMujFC2e0&t=51s
 
 空き予約確認や予約確定など音声でFunction Callingを呼んでるので、外部APIと連携すれば実際にレストラン予約ができるかと思います。
 
-ただ、予約デモではダミーの電話番号を使ってますが、個人情報の扱いもあるので、実際サービス化はセキリティを含めクリアしなければならない課題が多いです。
+ただ、予約デモではダミーの名前と電話番号を使ってます。
+
+個人情報の扱いもあるので、実際サービス化するにはどこまでOpenAIに情報を送信するかなどセキリティを含めクリアしなければならない課題が多いはずです。
 
 こちらはあくまでデモで、Assistants APIで遊んでいたら色々できた中の一つなのでこんなの出来るんだーくらいで見ていただければと思います。
 
@@ -46,7 +50,7 @@ https://zenn.dev/zuma_lab/articles/whisper-gpt4-turbo-tts-assistant-api
 
 # Function Callingを設定する
 
-後述するAssistantからFunction Callingのタスクとして呼び出されるFunctionのオブジェクト配列を定義します。
+まずFunction Callingのタスクとして呼び出されるFunctionのオブジェクト配列を定義します。
 
 ```py
 tools = [
@@ -108,7 +112,7 @@ tools = [
 - get_available_reservation_time
     - `予約日`, `人数` から予約が空いている時間を返却する
 - complete_reservation
-    - `予約日時`, `席予約` か `コース料理名`, `名前`, `電話番号` を受け取って予約を確定する
+    - `予約日時`, `席予約` か `コース料理名`, `名前`, `電話番号` を受け取って予約を確定し予約番号を返却する
 
 それぞれ予約の空き確認、予約の確定を行います。
 
@@ -415,11 +419,9 @@ Assistants APIのthreadで会話履歴を保持しているので、文脈を読
 
 Chat Completion APIだと、会話履歴の保持にDBや外部ストレージを使うなど工夫が必要でしたが、Assistants APIだととても簡単に会話履歴を保持できます。
 
-それではどのようにAssistants APIからFunction Callingを呼び出しているか、AI Assistantクラスの関数を見てみます。
+それでは今回のメインである、Assistants APIからどよのようにしてFunction Callingを呼び出しているか、AI Assistantクラスの関数を見てみます。
 
 # Assistants APIでタスクを実行する
-
-一番重要な部分、Assistants APIでタスクを実行する関数です。
 
 https://platform.openai.com/docs/assistants/how-it-works
 
@@ -448,6 +450,8 @@ Run Stepはそのタスクの1つ1つの実行履歴をリストで保持して�
  `予約日時`, `席予約`, `コース料理名`, `名前`, `電話番号` をトリガーに　`complete_reservation` 関数が呼び出される訳です。
 
 前置きが長くなりましたが、 `run_thread_actions` 関数の処理を見ていきます。
+
+関数の全体像はこちらです。
 
 ```py
     def run_thread_actions(self, text: str) -> str:
@@ -485,24 +489,18 @@ Run Stepはそのタスクの1つ1つの実行履歴をリストで保持して�
                 tool_function_name = tool_call.function.name
                 tool_function_arguments = json.loads(tool_call.function.arguments)
 
-                print("id:", tool_id)
-                print("name:", tool_function_name)
-                print("arguments:", tool_function_arguments)
-                if tool_function_name == "get_available_appointment_time":
-                    appointment_date = tool_function_arguments["appointment_date"]
-                    tool_function_output = get_available_appointment_time(
-                        appointment_date
+                if tool_function_name == "get_available_reservation_time":
+                    reservation_date = tool_function_arguments["reservation_date"]
+                    guest_count = tool_function_arguments["guest_count"]
+                    tool_function_output = get_available_reservation_time(
+                        reservation_date, guest_count
                     )
-                elif tool_function_name == "create_user_symptoms":
-                    symptoms = tool_function_arguments["symptoms"]
-                    tool_function_output = create_user_symptoms(symptoms)
-                elif tool_function_name == "update_user_information":
+                elif tool_function_name == "complete_reservation":
+                    reservation_datetime = tool_function_arguments["reservation_datetime"]
+                    reservation_type = tool_function_arguments["reservation_type"]
                     name = tool_function_arguments["name"]
                     telephone_number = tool_function_arguments["telephone_number"]
-                    local_id = tool_function_arguments["local_id"]
-                    tool_function_output = update_user_information(
-                        name, telephone_number, local_id
-                    )
+                    tool_function_output = complete_reservation(reservation_datetime, reservation_type, name, telephone_number)
                 break
 
             elif result.status == "completed":
@@ -676,7 +674,7 @@ return messages.data[-1].content[0].text.value
 
 # 余談
 
-Assistants APIでFunction Callingが実行されると、タスク分のRunが作成されるのでその分 `retrieve` が実行されます。
+Assistants APIでFunction Callingが実行されると、タスク分だけ `retrieve` が実行されます。
 
 色々実験している中で同じプロンプトに対して、Assistants APIとChat Completions APIを何度も実行してみましたが、Completions APIの方が体感1.5倍程速く感じました。
 
@@ -685,3 +683,5 @@ Assistants APIはChat Completions APIと違ってエージェントの動きを�
 もし今回のようにFunction Callingだけの用途でAssistants APIを使うのであれば、同等機能を持っているChat Completions APIの方が良いかもしれません。
 
 ただしAssistants APIのRetrievalやCode Interpreterは強力なので、今後も検証してAssistants APIの可能性を探ってみたいと思います。
+
+また、Assistants APIはstream機能などがまだ未実装なので、今後のアップデートに期待したいです。
