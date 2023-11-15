@@ -18,6 +18,14 @@ https://devday.openai.com/
 
 音声文字起こしにWhisper、推論実行にGPT-4 Turbo、文字から音声の生成にTTS、長期記憶保持にはAssistants APIを使っています。
 
+**追記**
+
+こちらのニケちゃんさんの記事でもありますが、Assistants APIのThreadを使った長期記憶管理は過去の会話履歴のToken数分消費しているようです。
+
+https://note.com/nike_cha_n/n/n65a6101d59d7
+
+もしAssistants APIを使う理由がFunction Callingや長期記憶のみの用途であれば、これまで通りChat Completions APIを使って会話履歴の上限を自分で管理するのが良いかと思います。
+
 # 成果物
 
 以下成果物となります。
