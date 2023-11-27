@@ -631,3 +631,7 @@ OpenAIのPlayGroundでAssistants APIを色々試してみてあまりに便利�
 また、同じプロンプトに対して、Assistants APIとChat Completions APIを何度も実行してみましたが、Completions APIの方が体感1.5倍程速く感じました。
 
 なのでエージェント的な使い方をしないのであれば今まで通り Chat Completions API を使うべきかなと思いました。
+
+次回はAssistants APIの Function Calling編です。宜しければこちらもご覧ください。
+
+https://zenn.dev/zuma_lab/articles/whisper-gpt4-turbo-tts-reserve-restaurant
