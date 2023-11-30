@@ -1,5 +1,5 @@
 ---
-title: "OpenAIのPrompt Engineering Guideでより良い結果を得る為のプロンプトエンジニアリングを学ぶ"
+title: "OpenAIのPrompt Engineering Guideでより良い結果を得るプロンプトエンジニアリングを学ぶ"
 emoji: "📚"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics:
